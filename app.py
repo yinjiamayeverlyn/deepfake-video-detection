@@ -4,7 +4,7 @@ import tempfile
 
 user_email = st.experimental_user.email  # Only works on Streamlit Cloud
 
-if not user_email.endswith("@um.edu.my"):
+if not user_email.endswith("@siswa.um.edu.my"):
     st.error("Access denied. You must use a @um.edu.my email.")
     st.stop()
 
