@@ -287,7 +287,7 @@ with tabs[3]:
         - **Frontend:** Streamlit (Python Web Framework)  
         - **Backend:** Python  
         - **Machine Learning:** CNN + LSTM Hybrid Deepfake Model  
-        - **Cloud Services:** Firebase, Cloudinary  
+        - **Cloud Services:** Firebase, Google Colab, Google Drive, MEGA
         - **Deployment:** Localhost or Streamlit Cloud
         """)
 
