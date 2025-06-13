@@ -2,14 +2,6 @@ import streamlit as st
 import datetime
 import tempfile
 
-user_email = st.experimental_user.email  # Only works on Streamlit Cloud
-
-if not user_email.endswith("@siswa.um.edu.my"):
-    st.error("Access denied. You must use a @siswa.um.edu.my email.")
-    st.stop()
-
-st.success(f"Welcome, {user_email}!")
-# Continue your app logic here
 
 # Set up the page
 st.set_page_config(page_title="Deepfake Detection Web App", layout="wide")
