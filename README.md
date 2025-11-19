@@ -27,14 +27,14 @@ All datasets are freely available online for research purposes.
 This web app allows users to detect deepfake videos. It is currently public for anyone to try, though primarily developed for educational purposes.
 
 ### Step 1: Upload a Video
-1. Go to the Upload Video tab.
+1. Go to the **Upload Video** tab.
 2. Choose your video input method:
-  - Upload from device: Select a .mp4, .mov, or .avi video file.
-  - Provide video URL: Enter a shareable link from Google Drive or Dropbox.
-3. Wait for the preview to appear on the screen.
+   - **Upload from device:** Select a `.mp4`, `.mov`, or `.avi` video file from your computer.
+   - **Provide video URL:** Enter a shareable link from **Google Drive** or **Dropbox**.
+3. Wait for the video preview to appear on the screen.
 
 ### Step 2: Submit for Detection
-1. Click Submit for Detection after uploading.
+1. Click **Submit for Detection** after uploading.
 2. The system analyzes the video using the deep learning ensemble model.
 3. You will receive:
   - Prediction: Real or Fake
@@ -42,7 +42,7 @@ This web app allows users to detect deepfake videos. It is currently public for 
   - Technical analysis (faces detected, timestamps)
 
 ### Step 3: Download the Report
-1. Click Download Detection Report to save results as a PDF.
+1. Click **Download Detection Report** to save results as a PDF.
 2. The report includes:
   - Prediction
   - Confidence score
