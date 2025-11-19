@@ -661,7 +661,7 @@ with tabs[3]:
     st.write("""
         For inquiries or collaboration, please contact:
 
-        - **Email:** <a href="mailto:everlynyinjiamay@gmail.com?subject=Deepfake Report&body=Hello, I have a question about the system.">everlynyinjiamay@gmail.com</a>
+        - **Email:** everlynyinjiamay@gmail.com
         - **GitHub:** [https://github.com/yinjiamayeverlyn/deepfake-video-detection](https://github.com/yinjiamayeverlyn/deepfake-video-detection)
         """, unsafe_allow_html=True)
 
@@ -671,6 +671,7 @@ with tabs[3]:
         © 2025 Deepfake Video Detection Web App | Developed for University Final Year Project 22004860
     </div>
     """, unsafe_allow_html=True)
+
 
 
 
