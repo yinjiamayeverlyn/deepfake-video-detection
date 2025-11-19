@@ -570,7 +570,8 @@ with tabs[2]:
 
     st.markdown("### Getting Started")
     st.write("""
-        This web app helps users detect deepfake videos. It's intended for use by students and staff of Universiti Malaya.  
+        This web app allows users to detect deepfake videos. It is currently public for anyone to try, though primarily developed for educational purposes.
+        
         Simply follow the steps below to analyze a video.
         """)
 
@@ -671,6 +672,7 @@ with tabs[3]:
         © 2025 Deepfake Video Detection Web App | Developed for University Final Year Project 22004860
     </div>
     """, unsafe_allow_html=True)
+
 
 
 
