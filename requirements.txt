@@ -1,7 +1,9 @@
-streamlit
 opencv-python-headless
-mtcnn
 tensorflow
+mtcnn
 numpy
-Pillow
+pillow
 reportlab
+plotly
+tqdm
+scikit-learn
