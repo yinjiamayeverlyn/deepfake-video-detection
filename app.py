@@ -35,6 +35,8 @@ import plotly.graph_objects as go
 # --- Machine Learning ---
 import tensorflow as tf
 
+is_mobile = st.sidebar.checkbox("Mobile mode")  # manual toggle
+
 # --- Initialize MTCNN detector once ---
 detector = MTCNN()
 
@@ -395,13 +397,18 @@ with tabs[1]:
                     hex_color = f'#{r:02X}{g:02X}{b:02X}'
                     gradient_steps.append({'range': [i, i + 5], 'color': hex_color})
 
+                if is_mobile:
+                    gauge_font = 24
+                else: 
+                    gauge_font = 48
+
                 # --- Gauge chart ---
                 fig = go.Figure(go.Indicator(
                     mode="gauge+number",
                     value=confidence,
                     title={'text': ""},
                     number={
-                        'font': {'size': 48, 'color': '#333', 'family': 'Arial Black'},
+                        'font': {'size': gauge_font, 'color': '#333', 'family': 'Arial Black'},
                         'valueformat': '.2f',
                         'suffix': '%'
                     },
@@ -420,13 +427,21 @@ with tabs[1]:
                     }
                 ))
 
+                if is_mobile:
+                    label_font = 22
+                    y_field= 0.35
+                else: 
+                    label_font = 36
+                    y_field= 0.25
+
+
                 # --- Add centered label below the confidence number ---
                 fig.add_annotation(
                     text=f"<b>{label}</b>",
-                    x=0.5, y=0.25,
+                    x=0.5, y=y_field,
                     xref="paper", yref="paper",
                     showarrow=False,
-                    font=dict(size=36, color="#333"),
+                    font=dict(size=label_font, color="#333"),
                 )
 
                 fig.update_layout(
@@ -674,7 +689,6 @@ with tabs[3]:
         © 2025 Deepfake Video Detection Web App | Developed for University Final Year Project 22004860
     </div>
     """, unsafe_allow_html=True)
-
 
 
 
