@@ -650,6 +650,8 @@ with tabs[3]:
         - **Backend:** Python  
         - **Deep Learning:** Ensemble of Convolutional Neural Networks (CNNs) for deepfake detection 
         - **Deployment:** Streamlit Cloud
+        - **Computer Vision:** OpenCV, MTCNN for face detection
+        - **Data Visualization:** Plotly
         """)
 
     st.markdown("### Acknowledgements")
@@ -672,6 +674,7 @@ with tabs[3]:
         © 2025 Deepfake Video Detection Web App | Developed for University Final Year Project 22004860
     </div>
     """, unsafe_allow_html=True)
+
 
 
 
