@@ -394,7 +394,7 @@ with tabs[1]:
                     return label, confidence, avg_score, probs
 
                 # --- Call the function to get predictions ---
-                label, confidence, avg_score, probs = predict_faces_tflite(frames, threshold=0.4)
+                label, confidence, avg_score, probs = predict_faces_tflite(frames, threshold=0.45)
 
                 # --- Gauge bar color ---
                 color = "#FF0000" if label == "Fake Video Detected" else "#006400" 
@@ -468,7 +468,13 @@ with tabs[1]:
                     paper_bgcolor='white',
                 )
 
-                st.plotly_chart(fig, use_container_width=True)
+                st.plotly_chart(
+                    fig,
+                    use_container_width=True,
+                    config={
+                        "displayModeBar": False
+                    }
+                )
 
                 # --- Details below gauge ---
                 st.markdown(f"### Confidence: **{confidence:.2f}%**")
@@ -830,8 +836,3 @@ with tabs[3]:
         © 2025 Deepfake Video Detection Web App | Developed for University Final Year Project 22004860
     </div>
     """, unsafe_allow_html=True)
-
-
-
-
-
