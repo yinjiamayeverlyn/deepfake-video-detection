@@ -294,432 +294,447 @@ with tabs[1]:
         duration = frame_count / fps if fps else 0
         cap.release()
 
+        # --- Initialize the detection flag ---
+        if "is_detecting" not in st.session_state:
+            st.session_state.is_detecting = False
+
         submit_clicked = st.button("Submit for Detection")
 
-        if duration < 4:
-            st.error("Video is too short (less than 4 seconds). Please upload a longer video.")
-        elif submit_clicked:
-            st.success("Video submitted! Extracting faces...")
-
-             # --- Create a new temp directory for this user session ---
-            faces_dir = tempfile.mkdtemp(prefix="faces_")
-            st.session_state.temp_dirs.append(faces_dir)
-
-            cap = cv2.VideoCapture(video_path)
-            frame_interval = int(fps * 1)  # Capture 1 frame every second
-            frames = []
-            count = 0
-
-            while True:
-                ret, frame = cap.read()
-                if not ret:
-                    break
-                if count % frame_interval == 0:
-                    rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                    results = detector.detect_faces(rgb_frame)
-
-                    for i, face in enumerate(results):
-                        x, y, w, h = face['box']
-                        x, y = max(0, x), max(0, y)
-
-                        # --- Add a margin (20% of width/height) to include background ---
-                        margin = 0.2
-                        x1 = max(0, int(x - w * margin))
-                        y1 = max(0, int(y - h * margin))
-                        x2 = min(frame.shape[1], int(x + w * (1 + margin)))
-                        y2 = min(frame.shape[0], int(y + h * (1 + margin)))
-
-                        face_crop = frame[y1:y2, x1:x2]
-
-                        if face_crop.size > 0:
-                            face_resized = cv2.resize(face_crop, (224, 224))
-                            face_path = os.path.join(faces_dir, f"face_{count}_{i}.jpg")
-                            cv2.imwrite(face_path, face_resized)
-                            frames.append(face_resized)
-
-                count += 1
-            cap.release()
-
-            if not frames:
-                st.error("No face detected in this video. Please upload another video.")
+        if submit_clicked:
+            if st.session_state.is_detecting:
+                st.error("Please be patient, you only need to click the 'Submit for Detection' button **once**. Resubmit now if needed.")
+                st.session_state.is_detecting = False
             else:
-                st.header("Detected Faces (Sampled Frames)")
-                total_faces = len(frames)
-                st.success(f"{total_faces} faces extracted successfully!")
-
-                # --- Default: show first 12 in grid ---
-                cols = st.columns(4)
-                preview_faces = frames[:12]
-                for i, face in enumerate(preview_faces):
-                    col = cols[i % 4]
-                    col.image(cv2.cvtColor(face, cv2.COLOR_BGR2RGB), caption=f"Face {i+1}", use_container_width=True)
-
-                # --- If more than 12, show “Show All” toggle ---
-                if total_faces > 12:
-                    with st.expander(f"Show remaining {total_faces - 12} faces"):
-                        cols_all = st.columns(4)
-                        for i, face in enumerate(frames[12:], start=13):  # start numbering from 13
-                            col = cols_all[(i - 13) % 4]  # reset column cycle
-                            col.image(cv2.cvtColor(face, cv2.COLOR_BGR2RGB),
-                                    caption=f"Face {i}", use_container_width=True)
-
-                # --- Predict using CNN TF Lite model ---
-                st.subheader("Running Deepfake Detection...")
-
-                # Function to run predictions on faces
-                def predict_faces_tflite(frames, threshold=0.45):
-                    faces_array = np.array(frames, dtype=np.float32) / 255.0
-                    preds = []
-
-                    # TF Lite requires input shape (batch, H, W, C)
-                    for face in faces_array:
-                        face_batch = np.expand_dims(face, axis=0).astype(np.float32)
-                        interpreter.set_tensor(input_details[0]['index'], face_batch)
-                        interpreter.invoke()
-                        output_data = interpreter.get_tensor(output_details[0]['index'])
-                        preds.append(output_data)
-
-                    preds = np.vstack(preds)
-
-                    # Handle ensemble output
-                    if preds.ndim == 2 and preds.shape[1] == 2:
-                        probs = preds[:, 1]  # class 1 = fake
-                    else:
-                        probs = preds.reshape(-1)
-
-                    avg_score = float(np.mean(probs))
-                    is_fake = avg_score >= threshold
-                    confidence = round(abs(avg_score - 0.5) * 200, 2)
-
-                    # Adjust low-confidence results
-                    if confidence < 50:
-                        label = "Real Video"
-                        confidence = 100 - confidence
-                    else:
-                        label = "Fake Video Detected" if is_fake else "Real Video"
-
-                    return label, confidence, avg_score, probs
-
-                # --- Call the function to get predictions ---
-                label, confidence, avg_score, probs = predict_faces_tflite(frames, threshold=0.45)
-
-                # --- Gauge bar color ---
-                color = "#FF0000" if label == "Fake Video Detected" else "#006400" 
-
-                # --- Create smooth gradient steps manually ---
-                gradient_steps = []
-                for i in range(0, 101, 5):  # every 5%
-                    if i < 50:
-                        # green → yellow transition
-                        r = 182 + int((255 - 182) * (i / 50))
-                        g = 239 + int((233 - 239) * (i / 50))
-                        b = 162 + int((169 - 162) * (i / 50))
-                    else:
-                        # yellow → coral transition
-                        r = 255
-                        g = 233 - int((233 - 182) * ((i - 50) / 50))
-                        b = 169 - int((169 - 166) * ((i - 50) / 50))
-                    hex_color = f'#{r:02X}{g:02X}{b:02X}'
-                    gradient_steps.append({'range': [i, i + 5], 'color': hex_color})
-
-                if is_mobile:
-                    gauge_font = 24
-                else: 
-                    gauge_font = 48
-
-                # --- Gauge chart ---
-                fig = go.Figure(go.Indicator(
-                    mode="gauge+number",
-                    value=confidence,
-                    title={'text': ""},
-                    number={
-                        'font': {'size': gauge_font, 'color': '#333', 'family': 'Arial Black'},
-                        'valueformat': '.2f',
-                        'suffix': '%'
-                    },
-                    gauge={
-                        'axis': {'range': [0, 100], 'tickwidth': 1, 'tickcolor': "lightgray"},
-                        'bar': {'color': color, 'thickness': 0.25},
-                        'bgcolor': 'white',
-                        'steps': gradient_steps,
-                        'borderwidth': 1,
-                        'bordercolor': '#ddd',
-                        'threshold': {
-                            'line': {'color': "black", 'width': 3},
-                            'thickness': 1.0,
-                            'value': confidence
-                        }
-                    }
-                ))
-
-                if is_mobile:
-                    label_font = 22
-                    y_field= 0.40
-                else: 
-                    label_font = 36
-                    y_field= 0.25
-
-
-                # --- Add centered label below the confidence number ---
-                fig.add_annotation(
-                    text=f"<b>{label}</b>",
-                    x=0.5, y=y_field,
-                    xref="paper", yref="paper",
-                    showarrow=False,
-                    font=dict(size=label_font, color="#333"),
-                )
-
-                fig.update_layout(
-                    margin=dict(t=40, b=20, l=20, r=20),
-                    height=350,
-                    paper_bgcolor='white',
-                )
-
-                st.plotly_chart(
-                    fig,
-                    use_container_width=True,
-                    config={
-                        "displayModeBar": False
-                    }
-                )
-
-                # --- Details below gauge ---
-                st.markdown(f"### Confidence: **{confidence:.2f}%**")
-                st.markdown(f"### Prediction: **{label}**")
-
-                with st.expander("Analysis Details"):
-
-                    # ----- REAL VIDEO ANALYSIS -----
-                    if label == "Real Video":
-                        if confidence < 61:
-                            st.markdown("""
-                            **Model Used:** Ensemble CNN  
-                            - The prediction indicates real characteristics are present.  
-                            - Several natural facial features and frame patterns align with real behavior.
-                            """)
-                        
-                        elif 61 <= confidence < 71:
-                            st.markdown("""
-                            **Model Used:** Ensemble CNN  
-                            - The model detected consistent real-video features across the frames. 
-                            - Natural movements and facial textures support a real classification.
-                            """)
-
-                        elif 71 <= confidence < 81:
-                            st.markdown("""
-                            **Model Used:** Ensemble CNN  
-                            - Strong indicators of real facial behavior were observed.  
-                            - The video shows coherent lighting, textures, and frame-to-frame stability.
-                            """)
-
-                        elif 81 <= confidence < 91:
-                            st.markdown("""
-                            **Model Used:** Ensemble CNN  
-                            - Clear and consistent real-video characteristics detected.  
-                            - No deepfake-like artifacts or irregularities appeared throughout the frames.
-                            """)
-
-                        else:  # confidence 91–100
-                            st.markdown("""
-                            **Model Used:** Ensemble CNN  
-                            - Highly consistent real-video patterns detected across the entire clip.  
-                            - The facial features, motion, and textures strongly align with natural video behavior.
-                            """)
-
-                    # ----- FAKE VIDEO ANALYSIS -----
-                    else:  # label == "Fake"
-                        if confidence < 61:
-                            st.markdown("""
-                            **Model Used:** Ensemble CNN  
-                            - The analysis detected several patterns associated with manipulated content. 
-                            - Some regions show irregularities commonly found in synthetic or altered frames.
-                            """)
-
-                        elif 61 <= confidence < 71:
-                            st.markdown("""
-                            **Model Used:** Ensemble CNN  
-                            - Features in the video align with deepfake-like characteristics.
-                            - Subtle inconsistencies in textures and motion contribute to the prediction.
-                            """)
-
-                        elif 71 <= confidence < 81:
-                            st.markdown("""
-                            **Model Used:** Ensemble CNN  
-                            - Multiple indicators of manipulation were observed. 
-                            - Frame patterns suggest synthetic alterations or generative artifacts.
-                            """)
-
-                        elif 81 <= confidence < 91:
-                            st.markdown("""
-                            **Model Used:** Ensemble CNN  
-                            - Clear signs of deepfake-related irregularities detected.  
-                            - Texture inconsistencies, blending issues, or motion mismatches support this classification.
-                            """)
-
-                        else:  # confidence 91–100
-                            st.markdown("""
-                            **Model Used:** Ensemble CNN  
-                            - Strong and consistent evidence of deepfake manipulation detected throughout the video.
-                            - The facial region exhibits distinct synthetic patterns and frame-level anomalies.
-                            """)
-
-
-                st.markdown(f"**Important Note:** This model is not 100% perfect. Deepfake methods keep improving, so results should be used as guidance—not absolute proof.")
-
-            # --- Register font for Unicode ---
-            pdfmetrics.registerFont(UnicodeCIDFont("HeiseiMin-W3"))
-
-            # --- Create PDF buffer ---
-            pdf_buffer = io.BytesIO()
-            pdf = SimpleDocTemplate(pdf_buffer, pagesize=A4)
-            styles = getSampleStyleSheet()
-            story = []
-
-            # --- Report Header ---
-            story.append(Paragraph("<b>Deepfake Detection Report</b>", styles["Title"]))
-            story.append(Spacer(1, 12))
-
-            summary_text = f"""
-            <b>Source:</b> {video_filename}<br/>
-            <b>Result:</b> {label}<br/>
-            <b>Confidence Score:</b> {confidence:.2f}%<br/>
-            <b>Extracted Faces:</b> {total_faces}<br/>
-            <b>Date:</b> {upload_time}<br/>
-            """
-            story.append(Paragraph(summary_text, styles["Normal"]))
-            story.append(Spacer(1, 12))
-
-            # --- Analysis Details ---
-            story.append(Paragraph("<b>Analysis Details:</b>", styles["Heading2"]))
-            # ----- REAL VIDEO ANALYSIS -----
-            if label == "Real Video":
-                if confidence < 61:
-                    analysis_text = """
-                    Model Used: Ensemble CNN <br/>
-                    - The prediction indicates real characteristics are present. <br/>
-                    - Several natural facial features and frame patterns align with real behavior. <br/>
-                    """                
-                
-                elif 61 <= confidence < 71:
-                    analysis_text = """
-                    Model Used: Ensemble CNN <br/>
-                    - The model detected consistent real-video features across the frames. <br/> 
-                    - Natural movements and facial textures support a real classification. <br/>
-                    """
-
-                elif 71 <= confidence < 81:
-                    analysis_text = """
-                    Model Used: Ensemble CNN <br/> 
-                    - Strong indicators of real facial behavior were observed. <br/> 
-                    - The video shows coherent lighting, textures, and frame-to-frame stability. <br/> 
-                    """
-
-                elif 81 <= confidence < 91:
-                    analysis_text = """
-                    Model Used: Ensemble CNN <br/> 
-                    - Clear and consistent real-video characteristics detected. <br/> 
-                    - No deepfake-like artifacts or irregularities appeared throughout the frames. <br/> 
-                    """
-
-                else:  # confidence 91–100
-                    analysis_text = """
-                    Model Used: Ensemble CNN <br/> 
-                    - Highly consistent real-video patterns detected across the entire clip. <br/> 
-                    - The facial features, motion, and textures strongly align with natural video behavior. <br/> 
-                    """
-
-            # ----- FAKE VIDEO ANALYSIS -----
-            else:  # label == "Fake"
-                if confidence < 61:
-                    analysis_text = """
-                    Model Used: Ensemble CNN <br/> 
-                    - The analysis detected several patterns associated with manipulated content. <br/> 
-                    - Some regions show irregularities commonly found in synthetic or altered frames. <br/> 
-                    """
-
-                elif 61 <= confidence < 71:
-                    analysis_text = """
-                    Model Used: Ensemble CNN <br/>
-                    - Features in the video align with deepfake-like characteristics. <br/>
-                    - Subtle inconsistencies in textures and motion contribute to the prediction. <br/>
-                    """
-
-                elif 71 <= confidence < 81:
-                    analysis_text = """
-                    Model Used: Ensemble CNN <br/>
-                    - Multiple indicators of manipulation were observed. <br/>
-                    - Frame patterns suggest synthetic alterations or generative artifacts. <br/>
-                    """
-
-                elif 81 <= confidence < 91:
-                    analysis_text = """
-                    Model Used: Ensemble CNN <br/>
-                    - Clear signs of deepfake-related irregularities detected. <br/>
-                    - Texture inconsistencies, blending issues, or motion mismatches support this classification. <br/>
-                    """
-
-                else:  # confidence 91–100
-                    analysis_text = """
-                    Model Used: Ensemble CNN <br/>
-                    - Strong and consistent evidence of deepfake manipulation detected throughout the video. <br/>
-                    - The facial region exhibits distinct synthetic patterns and frame-level anomalies. <br/>
-                    """                    
-
-            story.append(Paragraph(analysis_text, styles["Normal"]))
-            story.append(Spacer(1, 24))
-
-            # --- Extracted Face Images Section ---
-            story.append(Paragraph("<b>Extracted Face Images</b>", styles["Heading2"]))
-            story.append(Spacer(1, 12))
-
-            # Collect all extracted images from your temporary directory
-            image_paths = sorted([
-                os.path.join(faces_dir, f)
-                for f in os.listdir(faces_dir)
-                if f.lower().endswith((".jpg", ".jpeg", ".png"))
-            ])
-
-            # Prepare image grid (5 per row)
-            max_width = 1.1 * inch
-            max_height = 1.1 * inch
-            rows = []
-            row = []
-
-            for i, img_path in enumerate(image_paths):
+                # Set flag to indicate detection is in progress
+                st.session_state.is_detecting = True
                 try:
-                    img = Image(img_path, width=max_width, height=max_height)
-                except Exception:
-                    continue
-                row.append(img)
-                if (i + 1) % 5 == 0:
-                    rows.append(row)
-                    row = []
+                    if duration < 4:
+                        st.error("Video is too short (less than 4 seconds). Please upload a longer video.")
+                    else:
+                        st.success("Video submitted! Extracting faces...")
+                        
+                        # --- Create temp directory ---
+                        faces_dir = tempfile.mkdtemp(prefix="faces_")
+                        if "temp_dirs" not in st.session_state:
+                            st.session_state.temp_dirs = []
+                        st.session_state.temp_dirs.append(faces_dir)
 
-            if row:  # remaining faces
-                rows.append(row)
+                        # --- Face extraction loop ---
+                        cap = cv2.VideoCapture(video_path)
+                        frame_interval = int(fps * 1)
+                        frames = []
+                        count = 0
 
-            # Add table layout
-            if rows:
-                table = Table(rows, hAlign='CENTER')
-                table.setStyle(TableStyle([
-                    ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-                    ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-                    ('INNERGRID', (0, 0), (-1, -1), 0.25, colors.grey),
-                    ('BOX', (0, 0), (-1, -1), 0.25, colors.grey)
-                ]))
-                story.append(table)
+                        with st.spinner("Extracting faces, please wait..."):
+                            while True:
+                                ret, frame = cap.read()
+                                if not ret:
+                                    break
+                                if count % frame_interval == 0:
+                                    rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                                    results = detector.detect_faces(rgb_frame)
 
-            # --- Build PDF ---
-            pdf.build(story)
-            pdf_buffer.seek(0)
+                                    for i, face in enumerate(results):
+                                        x, y, w, h = face['box']
+                                        x, y = max(0, x), max(0, y)
+                                        margin = 0.2
+                                        x1 = max(0, int(x - w * margin))
+                                        y1 = max(0, int(y - h * margin))
+                                        x2 = min(frame.shape[1], int(x + w * (1 + margin)))
+                                        y2 = min(frame.shape[0], int(y + h * (1 + margin)))
 
-            # --- Streamlit Download Button ---
-            st.download_button(
-                label="Download Detection Report",
-                data=pdf_buffer,
-                file_name="detection_report.pdf",
-                mime="application/pdf"
-            )
+                                        face_crop = frame[y1:y2, x1:x2]
+                                        if face_crop.size > 0:
+                                            face_resized = cv2.resize(face_crop, (224, 224))
+                                            face_path = os.path.join(faces_dir, f"face_{count}_{i}.jpg")
+                                            cv2.imwrite(face_path, face_resized)
+                                            frames.append(face_resized)
+                                count += 1
+                        cap.release()
+
+                        if not frames:
+                            st.error("No face detected in this video. Please upload another video.")
+                        else:
+                            st.header("Detected Faces (Sampled Frames)")
+                            total_faces = len(frames)
+                            st.success(f"{total_faces} faces extracted successfully!")
+        
+                            # --- Default: show first 12 in grid ---
+                            cols = st.columns(4)
+                            preview_faces = frames[:12]
+                            for i, face in enumerate(preview_faces):
+                                col = cols[i % 4]
+                                col.image(cv2.cvtColor(face, cv2.COLOR_BGR2RGB), caption=f"Face {i+1}", use_container_width=True)
+
+                            # --- If more than 12, show “Show All” toggle ---
+                            if total_faces > 12:
+                                with st.expander(f"Show remaining {total_faces - 12} faces"):
+                                    cols_all = st.columns(4)
+                                    for i, face in enumerate(frames[12:], start=13):  # start numbering from 13
+                                        col = cols_all[(i - 13) % 4]  # reset column cycle
+                                        col.image(cv2.cvtColor(face, cv2.COLOR_BGR2RGB),
+                                                caption=f"Face {i}", use_container_width=True)
+
+                            # --- Predict using CNN TF Lite model ---
+                            st.subheader("Running Deepfake Detection...")
+
+                            # Function to run predictions on faces
+                            def predict_faces_tflite(frames, threshold=0.45):
+                                faces_array = np.array(frames, dtype=np.float32) / 255.0
+                                preds = []
+
+                                # TF Lite requires input shape (batch, H, W, C)
+                                for face in faces_array:
+                                    face_batch = np.expand_dims(face, axis=0).astype(np.float32)
+                                    interpreter.set_tensor(input_details[0]['index'], face_batch)
+                                    interpreter.invoke()
+                                    output_data = interpreter.get_tensor(output_details[0]['index'])
+                                    preds.append(output_data)
+
+                                preds = np.vstack(preds)
+
+                                # Handle ensemble output
+                                if preds.ndim == 2 and preds.shape[1] == 2:
+                                    probs = preds[:, 1]  # class 1 = fake
+                                else:
+                                    probs = preds.reshape(-1)
+
+                                avg_score = float(np.mean(probs))
+                                is_fake = avg_score >= threshold
+                                confidence = round(abs(avg_score - 0.5) * 200, 2)
+
+                                # Adjust low-confidence results
+                                if confidence < 50:
+                                    label = "Real Video"
+                                    confidence = 100 - confidence
+                                else:
+                                    label = "Fake Video Detected" if is_fake else "Real Video"
+
+                                return label, confidence, avg_score, probs
+
+                            # --- Call the function to get predictions ---
+                            label, confidence, avg_score, probs = predict_faces_tflite(frames, threshold=0.45)
+
+                            # --- Gauge bar color ---
+                            color = "#FF0000" if label == "Fake Video Detected" else "#006400" 
+
+                            # --- Create smooth gradient steps manually ---
+                            gradient_steps = []
+                            for i in range(0, 101, 5):  # every 5%
+                                if i < 50:
+                                    # green → yellow transition
+                                    r = 182 + int((255 - 182) * (i / 50))
+                                    g = 239 + int((233 - 239) * (i / 50))
+                                    b = 162 + int((169 - 162) * (i / 50))
+                                else:
+                                    # yellow → coral transition
+                                    r = 255
+                                    g = 233 - int((233 - 182) * ((i - 50) / 50))
+                                    b = 169 - int((169 - 166) * ((i - 50) / 50))
+                                hex_color = f'#{r:02X}{g:02X}{b:02X}'
+                                gradient_steps.append({'range': [i, i + 5], 'color': hex_color})
+
+                            if is_mobile:
+                                gauge_font = 24
+                            else: 
+                                gauge_font = 48
+
+                            # --- Gauge chart ---
+                            fig = go.Figure(go.Indicator(
+                                mode="gauge+number",
+                                value=confidence,
+                                title={'text': ""},
+                                number={
+                                    'font': {'size': gauge_font, 'color': '#333', 'family': 'Arial Black'},
+                                    'valueformat': '.2f',
+                                    'suffix': '%'
+                                },
+                                gauge={
+                                    'axis': {'range': [0, 100], 'tickwidth': 1, 'tickcolor': "lightgray"},
+                                    'bar': {'color': color, 'thickness': 0.25},
+                                    'bgcolor': 'white',
+                                    'steps': gradient_steps,
+                                    'borderwidth': 1,
+                                    'bordercolor': '#ddd',
+                                    'threshold': {
+                                        'line': {'color': "black", 'width': 3},
+                                        'thickness': 1.0,
+                                        'value': confidence
+                                    }
+                                }
+                            ))
+
+                            if is_mobile:
+                                label_font = 22
+                                y_field= 0.40
+                            else: 
+                                label_font = 36
+                                y_field= 0.25
+
+
+                            # --- Add centered label below the confidence number ---
+                            fig.add_annotation(
+                                text=f"<b>{label}</b>",
+                                x=0.5, y=y_field,
+                                xref="paper", yref="paper",
+                                showarrow=False,
+                                font=dict(size=label_font, color="#333"),
+                            )
+
+                            fig.update_layout(
+                                margin=dict(t=40, b=20, l=20, r=20),
+                                height=350,
+                                paper_bgcolor='white',
+                            )
+
+                            st.plotly_chart(
+                                fig,
+                                use_container_width=True,
+                                config={
+                                    "displayModeBar": False
+                                }
+                            )
+
+                            # --- Details below gauge ---
+                            st.markdown(f"### Confidence: **{confidence:.2f}%**")
+                            st.markdown(f"### Prediction: **{label}**")
+
+                            with st.expander("Analysis Details"):
+
+                                # ----- REAL VIDEO ANALYSIS -----
+                                if label == "Real Video":
+                                    if confidence < 61:
+                                        st.markdown("""
+                                        **Model Used:** Ensemble CNN  
+                                        - The prediction indicates real characteristics are present.  
+                                        - Several natural facial features and frame patterns align with real behavior.
+                                        """)
+                                    
+                                    elif 61 <= confidence < 71:
+                                        st.markdown("""
+                                        **Model Used:** Ensemble CNN  
+                                        - The model detected consistent real-video features across the frames. 
+                                        - Natural movements and facial textures support a real classification.
+                                        """)
+
+                                    elif 71 <= confidence < 81:
+                                        st.markdown("""
+                                        **Model Used:** Ensemble CNN  
+                                        - Strong indicators of real facial behavior were observed.  
+                                        - The video shows coherent lighting, textures, and frame-to-frame stability.
+                                        """)
+
+                                    elif 81 <= confidence < 91:
+                                        st.markdown("""
+                                        **Model Used:** Ensemble CNN  
+                                        - Clear and consistent real-video characteristics detected.  
+                                        - No deepfake-like artifacts or irregularities appeared throughout the frames.
+                                        """)
+
+                                    else:  # confidence 91–100
+                                        st.markdown("""
+                                        **Model Used:** Ensemble CNN  
+                                        - Highly consistent real-video patterns detected across the entire clip.  
+                                        - The facial features, motion, and textures strongly align with natural video behavior.
+                                        """)
+
+                                # ----- FAKE VIDEO ANALYSIS -----
+                                else:  # label == "Fake"
+                                    if confidence < 61:
+                                        st.markdown("""
+                                        **Model Used:** Ensemble CNN  
+                                        - The analysis detected several patterns associated with manipulated content. 
+                                        - Some regions show irregularities commonly found in synthetic or altered frames.
+                                        """)
+
+                                    elif 61 <= confidence < 71:
+                                        st.markdown("""
+                                        **Model Used:** Ensemble CNN  
+                                        - Features in the video align with deepfake-like characteristics.
+                                        - Subtle inconsistencies in textures and motion contribute to the prediction.
+                                        """)
+
+                                    elif 71 <= confidence < 81:
+                                        st.markdown("""
+                                        **Model Used:** Ensemble CNN  
+                                        - Multiple indicators of manipulation were observed. 
+                                        - Frame patterns suggest synthetic alterations or generative artifacts.
+                                        """)
+
+                                    elif 81 <= confidence < 91:
+                                        st.markdown("""
+                                        **Model Used:** Ensemble CNN  
+                                        - Clear signs of deepfake-related irregularities detected.  
+                                        - Texture inconsistencies, blending issues, or motion mismatches support this classification.
+                                        """)
+
+                                    else:  # confidence 91–100
+                                        st.markdown("""
+                                        **Model Used:** Ensemble CNN  
+                                        - Strong and consistent evidence of deepfake manipulation detected throughout the video.
+                                        - The facial region exhibits distinct synthetic patterns and frame-level anomalies.
+                                        """)
+
+
+                            st.markdown(f"**Important Note:** This model is not 100% perfect. Deepfake methods keep improving, so results should be used as guidance—not absolute proof.")
+
+                        # --- Register font for Unicode ---
+                        pdfmetrics.registerFont(UnicodeCIDFont("HeiseiMin-W3"))
+
+                        # --- Create PDF buffer ---
+                        pdf_buffer = io.BytesIO()
+                        pdf = SimpleDocTemplate(pdf_buffer, pagesize=A4)
+                        styles = getSampleStyleSheet()
+                        story = []
+
+                        # --- Report Header ---
+                        story.append(Paragraph("<b>Deepfake Detection Report</b>", styles["Title"]))
+                        story.append(Spacer(1, 12))
+
+                        summary_text = f"""
+                        <b>Source:</b> {video_filename}<br/>
+                        <b>Result:</b> {label}<br/>
+                        <b>Confidence Score:</b> {confidence:.2f}%<br/>
+                        <b>Extracted Faces:</b> {total_faces}<br/>
+                        <b>Date:</b> {upload_time}<br/>
+                        """
+                        story.append(Paragraph(summary_text, styles["Normal"]))
+                        story.append(Spacer(1, 12))
+
+                        # --- Analysis Details ---
+                        story.append(Paragraph("<b>Analysis Details:</b>", styles["Heading2"]))
+                        # ----- REAL VIDEO ANALYSIS -----
+                        if label == "Real Video":
+                            if confidence < 61:
+                                analysis_text = """
+                                Model Used: Ensemble CNN <br/>
+                                - The prediction indicates real characteristics are present. <br/>
+                                - Several natural facial features and frame patterns align with real behavior. <br/>
+                                """                
+                            
+                            elif 61 <= confidence < 71:
+                                analysis_text = """
+                                Model Used: Ensemble CNN <br/>
+                                - The model detected consistent real-video features across the frames. <br/> 
+                                - Natural movements and facial textures support a real classification. <br/>
+                                """
+
+                            elif 71 <= confidence < 81:
+                                analysis_text = """
+                                Model Used: Ensemble CNN <br/> 
+                                - Strong indicators of real facial behavior were observed. <br/> 
+                                - The video shows coherent lighting, textures, and frame-to-frame stability. <br/> 
+                                """
+
+                            elif 81 <= confidence < 91:
+                                analysis_text = """
+                                Model Used: Ensemble CNN <br/> 
+                                - Clear and consistent real-video characteristics detected. <br/> 
+                                - No deepfake-like artifacts or irregularities appeared throughout the frames. <br/> 
+                                """
+
+                            else:  # confidence 91–100
+                                analysis_text = """
+                                Model Used: Ensemble CNN <br/> 
+                                - Highly consistent real-video patterns detected across the entire clip. <br/> 
+                                - The facial features, motion, and textures strongly align with natural video behavior. <br/> 
+                                """
+
+                        # ----- FAKE VIDEO ANALYSIS -----
+                        else:  # label == "Fake"
+                            if confidence < 61:
+                                analysis_text = """
+                                Model Used: Ensemble CNN <br/> 
+                                - The analysis detected several patterns associated with manipulated content. <br/> 
+                                - Some regions show irregularities commonly found in synthetic or altered frames. <br/> 
+                                """
+
+                            elif 61 <= confidence < 71:
+                                analysis_text = """
+                                Model Used: Ensemble CNN <br/>
+                                - Features in the video align with deepfake-like characteristics. <br/>
+                                - Subtle inconsistencies in textures and motion contribute to the prediction. <br/>
+                                """
+
+                            elif 71 <= confidence < 81:
+                                analysis_text = """
+                                Model Used: Ensemble CNN <br/>
+                                - Multiple indicators of manipulation were observed. <br/>
+                                - Frame patterns suggest synthetic alterations or generative artifacts. <br/>
+                                """
+
+                            elif 81 <= confidence < 91:
+                                analysis_text = """
+                                Model Used: Ensemble CNN <br/>
+                                - Clear signs of deepfake-related irregularities detected. <br/>
+                                - Texture inconsistencies, blending issues, or motion mismatches support this classification. <br/>
+                                """
+
+                            else:  # confidence 91–100
+                                analysis_text = """
+                                Model Used: Ensemble CNN <br/>
+                                - Strong and consistent evidence of deepfake manipulation detected throughout the video. <br/>
+                                - The facial region exhibits distinct synthetic patterns and frame-level anomalies. <br/>
+                                """                    
+
+                        story.append(Paragraph(analysis_text, styles["Normal"]))
+                        story.append(Spacer(1, 24))
+
+                        # --- Extracted Face Images Section ---
+                        story.append(Paragraph("<b>Extracted Face Images</b>", styles["Heading2"]))
+                        story.append(Spacer(1, 12))
+
+                        # Collect all extracted images from your temporary directory
+                        image_paths = sorted([
+                            os.path.join(faces_dir, f)
+                            for f in os.listdir(faces_dir)
+                            if f.lower().endswith((".jpg", ".jpeg", ".png"))
+                        ])
+
+                        # Prepare image grid (5 per row)
+                        max_width = 1.1 * inch
+                        max_height = 1.1 * inch
+                        rows = []
+                        row = []
+
+                        for i, img_path in enumerate(image_paths):
+                            try:
+                                img = Image(img_path, width=max_width, height=max_height)
+                            except Exception:
+                                continue
+                            row.append(img)
+                            if (i + 1) % 5 == 0:
+                                rows.append(row)
+                                row = []
+
+                        if row:  # remaining faces
+                            rows.append(row)
+
+                        # Add table layout
+                        if rows:
+                            table = Table(rows, hAlign='CENTER')
+                            table.setStyle(TableStyle([
+                                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                                ('INNERGRID', (0, 0), (-1, -1), 0.25, colors.grey),
+                                ('BOX', (0, 0), (-1, -1), 0.25, colors.grey)
+                            ]))
+                            story.append(table)
+
+                        # --- Build PDF ---
+                        pdf.build(story)
+                        pdf_buffer.seek(0)
+
+                        # --- Streamlit Download Button ---
+                        st.download_button(
+                            label="Download Detection Report",
+                            data=pdf_buffer,
+                            file_name="detection_report.pdf",
+                            mime="application/pdf"
+                        )
+                finally:
+                    # Always reset the flag when done
+                    st.session_state.is_detecting = False
 
     else:
         st.info("Please upload a video file to begin.")
