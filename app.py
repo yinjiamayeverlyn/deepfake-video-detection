@@ -14,6 +14,7 @@ import shutil
 import tempfile
 import datetime
 import urllib.request
+from zoneinfo import ZoneInfo
 
 # --- Image & Video Processing ---
 import cv2
@@ -272,13 +273,19 @@ with tabs[1]:
             except Exception as e:
                 st.error(f"Unable to download video from the link. Please check the URL. ({e})")
 
+    # Initialize Upload time
+    upload_time = ''
 
     # If video is successfully uploaded
     # --- After user submits video ---
     if video_path:
         st.video(video_path)
         st.markdown(f"**Video source:** `{video_filename}`")
-        st.markdown(f"**Upload time:** `{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}`")
+        if upload_time == '':
+            malaysia_time = datetime.datetime.now(ZoneInfo("Asia/Kuala_Lumpur"))
+            upload_time = malaysia_time.strftime('%Y-%m-%d %H:%M:%S')
+            
+        st.markdown(f"**Upload time:** `{upload_time}`")
 
         # Validate video duration
         cap = cv2.VideoCapture(video_path)
@@ -577,7 +584,7 @@ with tabs[1]:
             <b>Result:</b> {label}<br/>
             <b>Confidence Score:</b> {confidence:.2f}%<br/>
             <b>Extracted Faces:</b> {total_faces}<br/>
-            <b>Date:</b> {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}<br/>
+            <b>Date:</b> {upload_time}<br/>
             """
             story.append(Paragraph(summary_text, styles["Normal"]))
             story.append(Spacer(1, 12))
