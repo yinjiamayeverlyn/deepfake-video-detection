@@ -32,10 +32,28 @@ from reportlab.pdfbase import pdfmetrics
 # --- Data Visualization ---
 import plotly.graph_objects as go
 
-# --- Machine Learning ---
+# --- Deep Learning ---
 import tensorflow as tf
 
-is_mobile = st.sidebar.checkbox("Mobile mode")  # manual toggle
+# --- Implementing Device Layout ---
+from streamlit_js_eval import streamlit_js_eval
+
+# Get browser width safely
+raw_width = streamlit_js_eval(js_expressions='window.innerWidth', want_output=True)
+
+# Normalize output
+if isinstance(raw_width, list) and len(raw_width) > 0:
+    width = raw_width[0]
+elif isinstance(raw_width, (int, float)):
+    width = raw_width
+else:
+    width = None
+
+# Use width
+if width is not None:
+    is_mobile = width < 768
+else:
+    st.write("Waiting for browser size...")
 
 # --- Initialize MTCNN detector once ---
 detector = MTCNN()
@@ -429,7 +447,7 @@ with tabs[1]:
 
                 if is_mobile:
                     label_font = 22
-                    y_field= 0.35
+                    y_field= 0.40
                 else: 
                     label_font = 36
                     y_field= 0.25
@@ -457,19 +475,81 @@ with tabs[1]:
                 st.markdown(f"### Prediction: **{label}**")
 
                 with st.expander("Analysis Details"):
+
+                    # ----- REAL VIDEO ANALYSIS -----
                     if label == "Real Video":
-                        st.markdown("""
-                        **Model Used:** Ensemble CNN  
-                        - No deepfake signs were found.  
-                        - The face appears natural across the video.
-                        """)
+                        if confidence < 61:
+                            st.markdown("""
+                            **Model Used:** Ensemble CNN  
+                            - The prediction indicates real characteristics are present.  
+                            - Several natural facial features and frame patterns align with real behavior.
+                            """)
                         
+                        elif 61 <= confidence < 71:
+                            st.markdown("""
+                            **Model Used:** Ensemble CNN  
+                            - The model detected consistent real-video features across the frames. 
+                            - Natural movements and facial textures support a real classification.
+                            """)
+
+                        elif 71 <= confidence < 81:
+                            st.markdown("""
+                            **Model Used:** Ensemble CNN  
+                            - Strong indicators of real facial behavior were observed.  
+                            - The video shows coherent lighting, textures, and frame-to-frame stability.
+                            """)
+
+                        elif 81 <= confidence < 91:
+                            st.markdown("""
+                            **Model Used:** Ensemble CNN  
+                            - Clear and consistent real-video characteristics detected.  
+                            - No deepfake-like artifacts or irregularities appeared throughout the frames.
+                            """)
+
+                        else:  # confidence 91–100
+                            st.markdown("""
+                            **Model Used:** Ensemble CNN  
+                            - Highly consistent real-video patterns detected across the entire clip.  
+                            - The facial features, motion, and textures strongly align with natural video behavior.
+                            """)
+
+                    # ----- FAKE VIDEO ANALYSIS -----
                     else:  # label == "Fake"
-                        st.markdown("""
-                        **Model Used:** Ensemble CNN  
-                        - Unusual patterns were detected on the face.  
-                        - Some areas look unnatural, suggesting possible manipulation.
-                        """)
+                        if confidence < 61:
+                            st.markdown("""
+                            **Model Used:** Ensemble CNN  
+                            - The analysis detected several patterns associated with manipulated content. 
+                            - Some regions show irregularities commonly found in synthetic or altered frames.
+                            """)
+
+                        elif 61 <= confidence < 71:
+                            st.markdown("""
+                            **Model Used:** Ensemble CNN  
+                            - Features in the video align with deepfake-like characteristics.
+                            - Subtle inconsistencies in textures and motion contribute to the prediction.
+                            """)
+
+                        elif 71 <= confidence < 81:
+                            st.markdown("""
+                            **Model Used:** Ensemble CNN  
+                            - Multiple indicators of manipulation were observed. 
+                            - Frame patterns suggest synthetic alterations or generative artifacts.
+                            """)
+
+                        elif 81 <= confidence < 91:
+                            st.markdown("""
+                            **Model Used:** Ensemble CNN  
+                            - Clear signs of deepfake-related irregularities detected.  
+                            - Texture inconsistencies, blending issues, or motion mismatches support this classification.
+                            """)
+
+                        else:  # confidence 91–100
+                            st.markdown("""
+                            **Model Used:** Ensemble CNN  
+                            - Strong and consistent evidence of deepfake manipulation detected throughout the video.
+                            - The facial region exhibits distinct synthetic patterns and frame-level anomalies.
+                            """)
+
 
                 st.markdown(f"**Important Note:** This model is not 100% perfect. Deepfake methods keep improving, so results should be used as guidance—not absolute proof.")
 
@@ -498,18 +578,79 @@ with tabs[1]:
 
             # --- Analysis Details ---
             story.append(Paragraph("<b>Analysis Details:</b>", styles["Heading2"]))
+            # ----- REAL VIDEO ANALYSIS -----
             if label == "Real Video":
-                analysis_text = """
-                Model Used: Ensemble CNN <br/>
-                - No deepfake signs were detected. <br/>
-                - Facial appearance stayed natural across the video. <br/>
-                """
-            else:  # Fake Video
-                analysis_text = """
-                Model Used: Ensemble CNN <br/>
-                - The system detected unusual patterns on the face. <br/>
-                - Some areas looked unnatural, suggesting manipulation. <br/>
-                """
+                if confidence < 61:
+                    analysis_text = """
+                    Model Used: Ensemble CNN <br/>
+                    - The prediction indicates real characteristics are present. <br/>
+                    - Several natural facial features and frame patterns align with real behavior. <br/>
+                    """                
+                
+                elif 61 <= confidence < 71:
+                    analysis_text = """
+                    Model Used: Ensemble CNN <br/>
+                    - The model detected consistent real-video features across the frames. <br/> 
+                    - Natural movements and facial textures support a real classification. <br/>
+                    """
+
+                elif 71 <= confidence < 81:
+                    analysis_text = """
+                    Model Used: Ensemble CNN <br/> 
+                    - Strong indicators of real facial behavior were observed. <br/> 
+                    - The video shows coherent lighting, textures, and frame-to-frame stability. <br/> 
+                    """
+
+                elif 81 <= confidence < 91:
+                    analysis_text = """
+                    Model Used: Ensemble CNN <br/> 
+                    - Clear and consistent real-video characteristics detected. <br/> 
+                    - No deepfake-like artifacts or irregularities appeared throughout the frames. <br/> 
+                    """
+
+                else:  # confidence 91–100
+                    analysis_text = """
+                    Model Used: Ensemble CNN <br/> 
+                    - Highly consistent real-video patterns detected across the entire clip. <br/> 
+                    - The facial features, motion, and textures strongly align with natural video behavior. <br/> 
+                    """
+
+            # ----- FAKE VIDEO ANALYSIS -----
+            else:  # label == "Fake"
+                if confidence < 61:
+                    analysis_text = """
+                    Model Used: Ensemble CNN <br/> 
+                    - The analysis detected several patterns associated with manipulated content. <br/> 
+                    - Some regions show irregularities commonly found in synthetic or altered frames. <br/> 
+                    """
+
+                elif 61 <= confidence < 71:
+                    analysis_text = """
+                    Model Used: Ensemble CNN <br/>
+                    - Features in the video align with deepfake-like characteristics. <br/>
+                    - Subtle inconsistencies in textures and motion contribute to the prediction. <br/>
+                    """
+
+                elif 71 <= confidence < 81:
+                    analysis_text = """
+                    Model Used: Ensemble CNN <br/>
+                    - Multiple indicators of manipulation were observed. <br/>
+                    - Frame patterns suggest synthetic alterations or generative artifacts. <br/>
+                    """
+
+                elif 81 <= confidence < 91:
+                    analysis_text = """
+                    Model Used: Ensemble CNN <br/>
+                    - Clear signs of deepfake-related irregularities detected. <br/>
+                    - Texture inconsistencies, blending issues, or motion mismatches support this classification. <br/>
+                    """
+
+                else:  # confidence 91–100
+                    analysis_text = """
+                    Model Used: Ensemble CNN <br/>
+                    - Strong and consistent evidence of deepfake manipulation detected throughout the video. <br/>
+                    - The facial region exhibits distinct synthetic patterns and frame-level anomalies. <br/>
+                    """                    
 
             story.append(Paragraph(analysis_text, styles["Normal"]))
             story.append(Spacer(1, 24))
