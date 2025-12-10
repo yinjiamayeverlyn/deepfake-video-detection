@@ -19,7 +19,7 @@ from zoneinfo import ZoneInfo
 # --- Image & Video Processing ---
 import cv2
 import numpy as np
-from mtcnn.mtcnn import MTCNN
+import mediapipe as mp
 
 # --- PDF & Reporting ---
 from reportlab.lib.pagesizes import A4
@@ -56,8 +56,11 @@ if width is not None:
 else:
     st.write("Waiting for browser size...")
 
-# --- Initialize MTCNN detector once ---
-detector = MTCNN()
+mp_face = mp.solutions.face_detection
+mp_draw = mp.solutions.drawing_utils
+
+# Initialize once
+face_detector = mp_face.FaceDetection(model_selection=1, min_detection_confidence=0.5)
 
 # --- Load TF Lite model once ---
 @st.cache_resource(show_spinner=True)
@@ -331,24 +334,33 @@ with tabs[1]:
                                 if not ret:
                                     break
                                 if count % frame_interval == 0:
-                                    rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                                    results = detector.detect_faces(rgb_frame)
-
-                                    for i, face in enumerate(results):
-                                        x, y, w, h = face['box']
-                                        x, y = max(0, x), max(0, y)
+                                rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                                results = face_detector.process(rgb_frame)
+                                
+                                if results.detections:
+                                    for i, detection in enumerate(results.detections):
+                                        # Extract bounding box
+                                        bboxC = detection.location_data.relative_bounding_box
+                                        ih, iw, _ = frame.shape
+                                
+                                        x1 = int(bboxC.xmin * iw)
+                                        y1 = int(bboxC.ymin * ih)
+                                        w  = int(bboxC.width * iw)
+                                        h  = int(bboxC.height * ih)
+                                
+                                        # Apply margin
                                         margin = 0.2
-                                        x1 = max(0, int(x - w * margin))
-                                        y1 = max(0, int(y - h * margin))
-                                        x2 = min(frame.shape[1], int(x + w * (1 + margin)))
-                                        y2 = min(frame.shape[0], int(y + h * (1 + margin)))
-
+                                        x1 = max(0, int(x1 - w * margin))
+                                        y1 = max(0, int(y1 - h * margin))
+                                        x2 = min(iw, int(x1 + w * (1 + margin)))
+                                        y2 = min(ih, int(y1 + h * (1 + margin)))
+                                
                                         face_crop = frame[y1:y2, x1:x2]
                                         if face_crop.size > 0:
                                             face_resized = cv2.resize(face_crop, (224, 224))
                                             face_path = os.path.join(faces_dir, f"face_{count}_{i}.jpg")
                                             cv2.imwrite(face_path, face_resized)
-                                            frames.append(face_resized)
+                                            frames.append(face_resized)    
                                 count += 1
                         cap.release()
 
@@ -860,4 +872,5 @@ with tabs[3]:
         © 2025 Deepfake Video Detection Web App | Developed for University Final Year Project 22004860
     </div>
     """, unsafe_allow_html=True)
+
 
