@@ -1,6 +1,5 @@
 opencv-python-headless
 tensorflow
-mtcnn
 numpy
 pillow
 reportlab
@@ -8,3 +7,4 @@ plotly
 tqdm
 scikit-learn
 streamlit-js-eval
+mediapipe
