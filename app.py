@@ -38,7 +38,6 @@ import tensorflow as tf
 # --- Implementing Device Layout ---
 from streamlit_js_eval import streamlit_js_eval
 
-# --- Safe MTCNN initialization ---
 try:
     from mtcnn.mtcnn import MTCNN
     detector = MTCNN()
@@ -47,12 +46,9 @@ except Exception as e:
     st.error(
         "MTCNN failed to load. The app will reload automatically. "
         "Face detection will not work until this succeeds."
-    )
-    st.write(f"Error details (for logs): {e}")
-    
-    # Optional: wait a bit to avoid tight reload loop
-    time.sleep(2)
-    st.experimental_rerun()  # Reload the whole app
+    )    
+    # --- Reload the app safely ---
+    st.experimental_rerun() 
 
 # Get browser width safely
 raw_width = streamlit_js_eval(js_expressions='window.innerWidth', want_output=True)
@@ -874,6 +870,7 @@ with tabs[3]:
         © 2025 Deepfake Video Detection Web App | Developed for University Final Year Project 22004860
     </div>
     """, unsafe_allow_html=True)
+
 
 
 
