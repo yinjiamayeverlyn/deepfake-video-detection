@@ -41,7 +41,6 @@ from streamlit_js_eval import streamlit_js_eval
 try:
     from mtcnn.mtcnn import MTCNN
     detector = MTCNN()
-    st.success("MTCNN loaded successfully!")
 except Exception as e:
     st.error(
         "MTCNN failed to load. The app will reload automatically. "
@@ -870,6 +869,7 @@ with tabs[3]:
         © 2025 Deepfake Video Detection Web App | Developed for University Final Year Project 22004860
     </div>
     """, unsafe_allow_html=True)
+
 
 
 
