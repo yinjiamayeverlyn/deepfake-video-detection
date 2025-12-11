@@ -22,6 +22,7 @@ if not st.session_state["auth"]:
     if login_clicked:
         if password == st.secrets["APP_PASSWORD"]:
             st.session_state["auth"] = True
+            st.success("Password correct! You can now use the app.")
         else:
             st.error("Incorrect password. Please try again.")
     
@@ -892,6 +893,7 @@ with tabs[3]:
         © 2025 Deepfake Video Detection Web App | Developed for University Final Year Project 22004860
     </div>
     """, unsafe_allow_html=True)
+
 
 
 
