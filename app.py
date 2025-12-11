@@ -15,7 +15,7 @@ if "auth" not in st.session_state:
 if not st.session_state["auth"]:
     st.title("Deepfake Video Detection - Access Required")
     
-    password = st.text_input("Enter Access Password:", type="password")
+    password = st.text_input("Enter Access Password:", type="password",  placeholder="")
     
     login_clicked = st.button("Login")
     
@@ -888,6 +888,7 @@ with tabs[3]:
         © 2025 Deepfake Video Detection Web App | Developed for University Final Year Project 22004860
     </div>
     """, unsafe_allow_html=True)
+
 
 
 
