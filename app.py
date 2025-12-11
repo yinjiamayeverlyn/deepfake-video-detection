@@ -98,11 +98,6 @@ def load_tflite_model(model_path):
 
 tflite_path = "ensemble_model.tflite"
 interpreter, input_details, output_details = load_tflite_model(tflite_path)
-
-# ---- Logout Button in Sidebar ----
-if st.sidebar.button("Logout"):
-    st.session_state["auth"] = False
-    st.experimental_rerun()
     
 # --- Top Navigation Bar using Tabs ---
 tabs = st.tabs(["Home", "Upload Video", "Tutorial", "About Us"])
@@ -893,6 +888,7 @@ with tabs[3]:
         © 2025 Deepfake Video Detection Web App | Developed for University Final Year Project 22004860
     </div>
     """, unsafe_allow_html=True)
+
 
 
 
