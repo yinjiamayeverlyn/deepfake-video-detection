@@ -12,18 +12,22 @@ if "auth" not in st.session_state:
     st.session_state["auth"] = False
 
 # ---- Authentication ----
+if "auth" not in st.session_state:
+    st.session_state["auth"] = False
+
 if not st.session_state["auth"]:
     st.title("Deepfake Video Detection - Access Required")
     
-    password = st.text_input("Enter Access Password:", type="password")
-    
-    # Check password immediately as user types
-    if password:
-        if password == st.secrets["APP_PASSWORD"]:
-            st.session_state["auth"] = True
-            st.success("Password correct! You can now use the app.")
-        else:
-            st.error("Incorrect password. Please try again.")
+    with st.form("login_form"):
+        password = st.text_input("Enter Access Password:", type="password")
+        login_clicked = st.form_submit_button("Login")
+        
+        if login_clicked:
+            if password == st.secrets["APP_PASSWORD"]:
+                st.session_state["auth"] = True
+                st.success("Password correct! You can now use the app.")
+            else:
+                st.error("Incorrect password. Please try again.")
     
     st.stop()
     
@@ -887,6 +891,7 @@ with tabs[3]:
         © 2025 Deepfake Video Detection Web App | Developed for University Final Year Project 22004860
     </div>
     """, unsafe_allow_html=True)
+
 
 
 
