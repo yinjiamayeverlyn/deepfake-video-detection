@@ -261,6 +261,12 @@ with tabs[1]:
 
     st.markdown("<h2 style='text-align:center;'>Upload Video for Deepfake Detection</h2>", unsafe_allow_html=True)
 
+    st.warning("""
+    ⚠ **Ethical Notice: This deepfake detection tool is strictly for academic, educational, and research purposes.**  
+    It must **not** be used for surveillance, harassment, doxxing, or any activity that violates privacy laws or the Terms of Service of social media platforms.  
+    The model is not 100% accurate. Results should be treated as guidance, **not** conclusive evidence.
+    """)
+
     upload_option = st.radio("Select video input method:", ["Upload from device", "Provide video URL"])
 
     video_path = None  # Will hold the final path or URL
@@ -888,6 +894,7 @@ with tabs[3]:
         © 2025 Deepfake Video Detection Web App | Developed for University Final Year Project 22004860
     </div>
     """, unsafe_allow_html=True)
+
 
 
 
