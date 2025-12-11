@@ -17,11 +17,12 @@ if not st.session_state["auth"]:
     
     password = st.text_input("Enter Access Password:", type="password")
     
-    if password == st.secrets["APP_PASSWORD"]:
-        st.session_state["auth"] = True
-        st.success("Password correct! You can now use the app.")
-    elif password:
-        st.error("Incorrect password. Please try again.")
+    if password:
+        if password == st.secrets["APP_PASSWORD"]:
+            st.session_state["auth"] = True
+            st.experimental_rerun()  # rerun the app to continue
+        else:
+            st.error("Incorrect password. Please try again.")
     
     st.stop()  # stop the rest of the app until authenticated
 
@@ -890,6 +891,7 @@ with tabs[3]:
         © 2025 Deepfake Video Detection Web App | Developed for University Final Year Project 22004860
     </div>
     """, unsafe_allow_html=True)
+
 
 
 
