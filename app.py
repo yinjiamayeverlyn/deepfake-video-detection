@@ -1,12 +1,5 @@
 import streamlit as st
 
-# --- First and only set_page_config ---
-st.set_page_config(
-    page_title="Deepfake Video Detection",
-    page_icon="🎬",
-    layout="wide"
-)
-
 # ---- Password Protection ----
 def login():
     st.title(" Deepfake Video Detection - Access Required")
@@ -25,6 +18,13 @@ if "auth" not in st.session_state:
 if not st.session_state["auth"]:
     login()
     st.stop()
+    
+# --- First and only set_page_config ---
+st.set_page_config(
+    page_title="Deepfake Video Detection",
+    page_icon="🎬",
+    layout="wide"
+)
 
 # --- Standard Library Imports ---
 import os
@@ -888,6 +888,7 @@ with tabs[3]:
         © 2025 Deepfake Video Detection Web App | Developed for University Final Year Project 22004860
     </div>
     """, unsafe_allow_html=True)
+
 
 
 
