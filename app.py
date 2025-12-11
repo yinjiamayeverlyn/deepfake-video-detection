@@ -15,15 +15,9 @@ def login():
 
     if password == st.secrets["APP_PASSWORD"]:
         st.session_state["auth"] = True
+        st.experimental_rerun()  # <-- rerun the app so it continues
     elif password:
         st.error("Incorrect password. Please try again.")
-
-if "auth" not in st.session_state:
-    st.session_state["auth"] = False
-
-if not st.session_state["auth"]:
-    login()
-    st.stop()
 
 # --- Standard Library Imports ---
 import os
@@ -890,6 +884,7 @@ with tabs[3]:
         © 2025 Deepfake Video Detection Web App | Developed for University Final Year Project 22004860
     </div>
     """, unsafe_allow_html=True)
+
 
 
 
