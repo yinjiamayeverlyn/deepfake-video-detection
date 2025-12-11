@@ -1,5 +1,12 @@
 import streamlit as st
 
+# --- First and only set_page_config ---
+st.set_page_config(
+    page_title="Deepfake Video Detection",
+    page_icon="🎬",
+    layout="wide"
+)
+
 # ---- Password Protection ----
 def login():
     st.title(" Deepfake Video Detection - Access Required")
@@ -18,13 +25,6 @@ if "auth" not in st.session_state:
 if not st.session_state["auth"]:
     login()
     st.stop()
-    
-# --- First and only set_page_config ---
-st.set_page_config(
-    page_title="Deepfake Video Detection",
-    page_icon="🎬",
-    layout="wide"
-)
 
 # --- Standard Library Imports ---
 import os
@@ -62,7 +62,7 @@ try:
     detector = MTCNN()
 except Exception as e:
     st.error(
-        "MTCNN failed to load. The app will reload automatically. "
+        "MTCNN failed to load. Please reload the page. "
         "Face detection will not work until this succeeds."
     )    
     # --- Reload the app safely ---
@@ -85,8 +85,6 @@ if width is not None:
 else:
     st.write("Waiting for browser size...")
 
-detector = MTCNN()
-
 # --- Load TF Lite model once ---
 @st.cache_resource(show_spinner=True)
 def load_tflite_model(model_path):
@@ -99,6 +97,11 @@ def load_tflite_model(model_path):
 tflite_path = "ensemble_model.tflite"
 interpreter, input_details, output_details = load_tflite_model(tflite_path)
 
+# ---- Logout Button in Sidebar ----
+if st.sidebar.button("Logout"):
+    st.session_state["auth"] = False
+    st.experimental_rerun()
+    
 # --- Top Navigation Bar using Tabs ---
 tabs = st.tabs(["Home", "Upload Video", "Tutorial", "About Us"])
 
@@ -888,6 +891,7 @@ with tabs[3]:
         © 2025 Deepfake Video Detection Web App | Developed for University Final Year Project 22004860
     </div>
     """, unsafe_allow_html=True)
+
 
 
 
