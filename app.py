@@ -17,17 +17,15 @@ if not st.session_state["auth"]:
     
     password = st.text_input("Enter Access Password:", type="password")
     
-    # Use button to trigger login
     login_clicked = st.button("Login")
     
     if login_clicked:
         if password == st.secrets["APP_PASSWORD"]:
             st.session_state["auth"] = True
-            st.experimental_rerun()  
         else:
             st.error("Incorrect password. Please try again.")
     
-    st.stop()  # stop rest of the app until authenticated
+    st.stop()
     
 # --- Standard Library Imports ---
 import os
@@ -894,6 +892,7 @@ with tabs[3]:
         © 2025 Deepfake Video Detection Web App | Developed for University Final Year Project 22004860
     </div>
     """, unsafe_allow_html=True)
+
 
 
 
