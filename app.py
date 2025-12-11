@@ -11,20 +11,23 @@ st.set_page_config(
 if "auth" not in st.session_state:
     st.session_state["auth"] = False
 
-# --- Password Protection ---
+# ---- Authentication ----
 if not st.session_state["auth"]:
     st.title("Deepfake Video Detection - Access Required")
     
     password = st.text_input("Enter Access Password:", type="password")
     
-    if st.button("Login"):
+    # Use button to trigger login
+    login_clicked = st.button("Login")
+    
+    if login_clicked:
         if password == st.secrets["APP_PASSWORD"]:
             st.session_state["auth"] = True
-            st.experimental_rerun()  # safe to rerun here
+            st.experimental_rerun()  
         else:
             st.error("Incorrect password. Please try again.")
     
-    st.stop()
+    st.stop()  # stop rest of the app until authenticated
     
 # --- Standard Library Imports ---
 import os
@@ -891,6 +894,7 @@ with tabs[3]:
         © 2025 Deepfake Video Detection Web App | Developed for University Final Year Project 22004860
     </div>
     """, unsafe_allow_html=True)
+
 
 
 
