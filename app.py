@@ -268,6 +268,7 @@ with tabs[1]:
 
     video_path = None  # Will hold the final path or URL
     video_filename = None
+    valid_video = False
 
     if upload_option == "Upload from device":
         uploaded_file = st.file_uploader("Choose a video file", type=["mp4", "mov", "avi"])
@@ -276,48 +277,66 @@ with tabs[1]:
             tfile.write(uploaded_file.read())
             video_path = tfile.name
             video_filename = uploaded_file.name
+            valid_video = True
 
     elif upload_option == "Provide video URL":
         video_url = st.text_input("Paste video URL here (Dropbox or Google Drive links supported)")
+    
         if video_url:
             try:
-                # --- Handle Dropbox links ---
                 if "dropbox.com" in video_url:
                     if "dl=0" in video_url:
                         video_url = video_url.replace("dl=0", "dl=1")
-                    video_url = video_url.replace("www.dropbox.com", "dl.dropboxusercontent.com")
-
-                # --- Handle Google Drive links ---
+                    video_url = video_url.replace(
+                        "www.dropbox.com", "dl.dropboxusercontent.com"
+                    )
+    
                 elif "drive.google.com" in video_url:
-                    if "/d/" in video_url:  # format: /d/<file_id>/
+                    if "/d/" in video_url:
                         file_id = video_url.split("/d/")[1].split("/")[0]
-                        video_url = f"https://drive.google.com/uc?export=download&id={file_id}"
-                    elif "id=" in video_url:  # format: ?id=<file_id>
+                    elif "id=" in video_url:
                         file_id = video_url.split("id=")[1].split("&")[0]
-                        video_url = f"https://drive.google.com/uc?export=download&id={file_id}"
-                
-                # --- Save video locally ---
+                    else:
+                        raise ValueError("Invalid Google Drive link format.")
+    
+                    video_url = f"https://drive.google.com/uc?export=download&id={file_id}"
+    
+                else:
+                    st.error(
+                        "Unsupported video source.\n\n"
+                        "Only **Google Drive** and **Dropbox** links are supported."
+                    )
+                    valid_video = False
+                    video_path = None
+                    st.stop()   # HARD STOP — VERY IMPORTANT
+    
                 video_filename = os.path.basename(video_url.split("?")[0])
                 video_path = os.path.join(tempfile.gettempdir(), video_filename)
                 urllib.request.urlretrieve(video_url, video_path)
+    
+                valid_video = True
+    
+            except Exception:
+                st.error(
+                    "Unable to download video.\n\n"
+                    "Please ensure the link is public and valid."
+                )
+                valid_video = False
+                video_path = None
 
-            except Exception as e:
-                st.error( "Unsupported video source.\n\n"
-                         "Only **Google Drive** and **Dropbox** links are supported.\n"
-                         "Please upload from these platforms or upload from device.")
-                
     # Initialize Upload time
     upload_time = ''
 
     # If video is successfully uploaded
     # --- After user submits video ---
-    if video_path:
+    if valid_video and video_path and os.path.exists(video_path):
         st.video(video_path)
         st.markdown(f"**Video source:** `{video_filename}`")
+    
         if upload_time == '':
             malaysia_time = datetime.datetime.now(ZoneInfo("Asia/Kuala_Lumpur"))
             upload_time = malaysia_time.strftime('%Y-%m-%d %H:%M:%S')
-            
+    
         st.markdown(f"**Upload time:** `{upload_time}`")
 
         # Validate video duration
@@ -893,6 +912,7 @@ with tabs[3]:
         © 2025 Deepfake Video Detection Web App | Developed for University Final Year Project 22004860
     </div>
     """, unsafe_allow_html=True)
+
 
 
 
