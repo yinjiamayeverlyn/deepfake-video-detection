@@ -390,7 +390,7 @@ with tabs[1]:
                                         try:
                                             results = detector.detect_faces(rgb_frame)
                                         except Exception:
-                                            results = []  # ⛔ Prevent crash
+                                            results = [] 
                         
                                         for i, face in enumerate(results):
                                             x, y, w, h = face['box']
@@ -411,7 +411,7 @@ with tabs[1]:
                                                 frames.append(face_resized)
                         
                                     except Exception:
-                                        pass  # ⛔ Skip bad frame safely
+                                        pass 
                         
                                 count += 1
 
@@ -925,37 +925,3 @@ with tabs[3]:
         © 2025 Deepfake Video Detection Web App | Developed for University Final Year Project 22004860
     </div>
     """, unsafe_allow_html=True)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
