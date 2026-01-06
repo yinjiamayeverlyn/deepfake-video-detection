@@ -268,7 +268,6 @@ with tabs[1]:
 
     video_path = None  # Will hold the final path or URL
     video_filename = None
-    valid_video = False
 
     if upload_option == "Upload from device":
         uploaded_file = st.file_uploader("Choose a video file", type=["mp4", "mov", "avi"])
@@ -277,7 +276,6 @@ with tabs[1]:
             tfile.write(uploaded_file.read())
             video_path = tfile.name
             video_filename = uploaded_file.name
-            valid_video = True
 
     elif upload_option == "Provide video URL":
         video_url = st.text_input("Paste video URL here (Dropbox or Google Drive links supported)")
@@ -297,21 +295,11 @@ with tabs[1]:
                     elif "id=" in video_url:  # format: ?id=<file_id>
                         file_id = video_url.split("id=")[1].split("&")[0]
                         video_url = f"https://drive.google.com/uc?export=download&id={file_id}"
-
-                else:
-                    st.error(
-                        "Unsupported video source.\n\n"
-                        "Only **Google Drive** and **Dropbox** links are supported.\n"
-                        "Please upload from these platforms or upload from device."
-                    )
-                    valid_video = False
-                    st.stop() 
                 
                 # --- Save video locally ---
                 video_filename = os.path.basename(video_url.split("?")[0])
                 video_path = os.path.join(tempfile.gettempdir(), video_filename)
                 urllib.request.urlretrieve(video_url, video_path)
-                valid_video = True
 
             except Exception as e:
                 st.error(f"Unable to download video from the link. Please check the URL. ({e})")
@@ -343,16 +331,7 @@ with tabs[1]:
 
         submit_clicked = st.button("Submit for Detection")
 
-        if submit_clicked:
-            if not valid_video or not video_path:
-                st.error(
-                    "No valid video available.\n\n"
-                    "Only **Google Drive**, **Dropbox**, or **device uploads** "
-                    "are supported for detection."
-                )
-                st.session_state.is_detecting = False
-                st.stop()
-        
+        if submit_clicked:    
             if st.session_state.is_detecting:
                 st.error("Please be patient, you only need to click the 'Submit for Detection' button **once**. Resubmit now if needed.")
                 st.session_state.is_detecting = False
@@ -912,6 +891,7 @@ with tabs[3]:
         © 2025 Deepfake Video Detection Web App | Developed for University Final Year Project 22004860
     </div>
     """, unsafe_allow_html=True)
+
 
 
 
