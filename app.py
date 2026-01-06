@@ -382,26 +382,39 @@ with tabs[1]:
                                 ret, frame = cap.read()
                                 if not ret:
                                     break
+                        
                                 if count % frame_interval == 0:
-                                    rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                                    results = detector.detect_faces(rgb_frame)
-
-                                    for i, face in enumerate(results):
-                                        x, y, w, h = face['box']
-                                        x, y = max(0, x), max(0, y)
-                                        margin = 0.2
-                                        x1 = max(0, int(x - w * margin))
-                                        y1 = max(0, int(y - h * margin))
-                                        x2 = min(frame.shape[1], int(x + w * (1 + margin)))
-                                        y2 = min(frame.shape[0], int(y + h * (1 + margin)))
-
-                                        face_crop = frame[y1:y2, x1:x2]
-                                        if face_crop.size > 0:
-                                            face_resized = cv2.resize(face_crop, (224, 224))
-                                            face_path = os.path.join(faces_dir, f"face_{count}_{i}.jpg")
-                                            cv2.imwrite(face_path, face_resized)
-                                            frames.append(face_resized)                                
+                                    try:
+                                        rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                        
+                                        try:
+                                            results = detector.detect_faces(rgb_frame)
+                                        except Exception:
+                                            results = []  # ⛔ Prevent crash
+                        
+                                        for i, face in enumerate(results):
+                                            x, y, w, h = face['box']
+                                            x, y = max(0, x), max(0, y)
+                                            margin = 0.2
+                        
+                                            x1 = max(0, int(x - w * margin))
+                                            y1 = max(0, int(y - h * margin))
+                                            x2 = min(frame.shape[1], int(x + w * (1 + margin)))
+                                            y2 = min(frame.shape[0], int(y + h * (1 + margin)))
+                        
+                                            face_crop = frame[y1:y2, x1:x2]
+                        
+                                            if face_crop.size > 0:
+                                                face_resized = cv2.resize(face_crop, (224, 224))
+                                                face_path = os.path.join(faces_dir, f"face_{count}_{i}.jpg")
+                                                cv2.imwrite(face_path, face_resized)
+                                                frames.append(face_resized)
+                        
+                                    except Exception:
+                                        pass  # ⛔ Skip bad frame safely
+                        
                                 count += 1
+
                         cap.release()
 
                         if not frames:
@@ -912,6 +925,7 @@ with tabs[3]:
         © 2025 Deepfake Video Detection Web App | Developed for University Final Year Project 22004860
     </div>
     """, unsafe_allow_html=True)
+
 
 
 
