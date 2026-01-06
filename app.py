@@ -302,8 +302,10 @@ with tabs[1]:
                 urllib.request.urlretrieve(video_url, video_path)
 
             except Exception as e:
-                st.error(f"Unable to download video from the link. Please check the URL. ({e})")
-
+                st.error( "Unsupported video source.\n\n"
+                         "Only **Google Drive** and **Dropbox** links are supported.\n"
+                         "Please upload from these platforms or upload from device.")
+                
     # Initialize Upload time
     upload_time = ''
 
@@ -891,6 +893,7 @@ with tabs[3]:
         © 2025 Deepfake Video Detection Web App | Developed for University Final Year Project 22004860
     </div>
     """, unsafe_allow_html=True)
+
 
 
 
