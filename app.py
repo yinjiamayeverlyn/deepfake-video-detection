@@ -833,6 +833,7 @@ with tabs[2]:
             - Upload from device – select a video file in .mp4, .mov, or .avi format.
             - Provide video URL – enter a shareable link from Google Drive or Dropbox only.
         - Wait for the preview to appear on the screen.
+        - **Video length requirement:** For accurate detection, the uploaded video should be **longer than 4 seconds**, as shorter videos provide too few frames for reliable analysis.
         """)
 
     st.markdown("### Step 2: Submit for Detection")
@@ -925,3 +926,4 @@ with tabs[3]:
         © 2025 Deepfake Video Detection Web App | Developed for University Final Year Project 22004860
     </div>
     """, unsafe_allow_html=True)
+
