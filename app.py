@@ -420,7 +420,7 @@ with tabs[1]:
                         if not frames:
                             st.error("No face detected in this video. Please upload another video.")
                             st.session_state.is_detecting = False 
-                            st.stop()
+                
                         else:
                             st.header("Detected Faces (Sampled Frames)")
                             total_faces = len(frames)
@@ -926,6 +926,7 @@ with tabs[3]:
         © 2025 Deepfake Video Detection Web App | Developed for University Final Year Project 22004860
     </div>
     """, unsafe_allow_html=True)
+
 
 
 
