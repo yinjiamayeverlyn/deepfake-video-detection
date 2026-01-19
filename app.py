@@ -395,14 +395,16 @@ with tabs[1]:
                         
                                         for i, face in enumerate(results):
                                             x, y, w, h = face['box']
-                                            x, y = max(0, x), max(0, y)
-                                            margin = 0.25
-                        
-                                            x1 = max(0, int(x - w * margin))
-                                            y1 = max(0, int(y - h * margin))
-                                            x2 = min(frame.shape[1], int(x + w * (1 + margin)))
-                                            y2 = min(frame.shape[0], int(y + h * (1 + margin)))
-                        
+                                            x, y = max(0, x), max(0, y)                                        
+
+                                            margin_x = 0.35   # left & right
+                                            margin_y = 0.45   # top & bottom (more forehead & chin)
+                                            
+                                            x1 = max(0, int(x - w * margin_x))
+                                            y1 = max(0, int(y - h * margin_y))
+                                            x2 = min(frame.shape[1], int(x + w * (1 + margin_x)))
+                                            y2 = min(frame.shape[0], int(y + h * (1 + margin_y)))
+                    
                                             face_crop = frame[y1:y2, x1:x2]
                         
                                             if face_crop.size > 0:
@@ -927,6 +929,7 @@ with tabs[3]:
         © 2025 Deepfake Video Detection Web App | Developed for University Final Year Project 22004860
     </div>
     """, unsafe_allow_html=True)
+
 
 
 
