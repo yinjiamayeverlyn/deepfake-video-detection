@@ -359,6 +359,10 @@ with tabs[1]:
             else:
                 # Set flag to indicate detection is in progress
                 st.session_state.is_detecting = True
+                label = None
+                confidence = None
+                total_faces = 0
+                
                 try:
                     if duration < 4:
                         st.error("Video is too short (less than 4 seconds). Please upload a longer video.")
@@ -926,6 +930,7 @@ with tabs[3]:
         © 2025 Deepfake Video Detection Web App | Developed for University Final Year Project 22004860
     </div>
     """, unsafe_allow_html=True)
+
 
 
 
