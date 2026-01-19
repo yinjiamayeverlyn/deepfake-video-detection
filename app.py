@@ -396,7 +396,7 @@ with tabs[1]:
                                         for i, face in enumerate(results):
                                             x, y, w, h = face['box']
                                             x, y = max(0, x), max(0, y)
-                                            margin = 0.2
+                                            margin = 0.25
                         
                                             x1 = max(0, int(x - w * margin))
                                             y1 = max(0, int(y - h * margin))
@@ -927,6 +927,7 @@ with tabs[3]:
         © 2025 Deepfake Video Detection Web App | Developed for University Final Year Project 22004860
     </div>
     """, unsafe_allow_html=True)
+
 
 
 
