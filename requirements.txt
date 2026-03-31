@@ -1,10 +1,11 @@
+streamlit
+torch==2.0.1
+torchvision==0.15.2
 opencv-python-headless
-tensorflow
-mtcnn
 numpy
 pillow
 reportlab
 plotly
 tqdm
 scikit-learn
-streamlit-js-eval
+facenet-pytorch
