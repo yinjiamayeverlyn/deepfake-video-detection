@@ -1,4 +1,13 @@
 import streamlit as st
+import os
+import cv2
+import torch
+import tempfile
+import numpy as np
+from PIL import Image
+from facenet_pytorch import MTCNN
+from torchvision import transforms, models
+import torch.nn as nn
 
 # ======================
 # PAGE CONFIG
@@ -32,35 +41,40 @@ if not st.session_state["auth"]:
     st.stop()
 
 # ======================
-# IMPORTS
-# ======================
-import os
-import cv2
-import torch
-import tempfile
-import numpy as np
-from PIL import Image
-from facenet_pytorch import MTCNN
-from torchvision import transforms
-
-# ======================
 # DEVICE
 # ======================
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # ======================
-# LOAD MODEL
+# MODEL ARCHITECTURE (matches your testing)
 # ======================
+def create_model():
+    efficientnet = models.efficientnet_b0(weights=None)
+    efficientnet.classifier = nn.Sequential(
+        nn.Linear(efficientnet.classifier[1].in_features, 256),
+        nn.ReLU(),
+        nn.Dropout(0.5),
+        nn.Linear(256, 64),
+        nn.ReLU(),
+        nn.Dropout(0.3),
+        nn.Linear(64, 1)
+    )
+    return efficientnet.to(DEVICE)
+
+MODEL_PATH = r"E:/dfd_balance/best_deepfake_model.pth"
+
 @st.cache_resource
 def load_model():
-    model = torch.load("best_deepfake_model.pth", map_location=DEVICE)
+    model = create_model()
+    state_dict = torch.load(MODEL_PATH, map_location=DEVICE)
+    model.load_state_dict(state_dict)
     model.eval()
     return model
 
 model = load_model()
 
 # ======================
-# LOAD FACE DETECTOR
+# FACE DETECTOR
 # ======================
 @st.cache_resource
 def load_mtcnn():
@@ -74,14 +88,15 @@ mtcnn = load_mtcnn()
 transform = transforms.Compose([
     transforms.ToPILImage(),
     transforms.Resize((224, 224)),
-    transforms.ToTensor()
+    transforms.ToTensor(),
+    transforms.Normalize([0.485, 0.456, 0.406],
+                         [0.229, 0.224, 0.225])
 ])
 
 # ======================
-# FACE CROP (FIXED VERSION)
+# FACE CROP
 # ======================
 def crop_face(frame):
-
     rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
     boxes, _ = mtcnn.detect(rgb)
 
@@ -89,60 +104,40 @@ def crop_face(frame):
         return None
 
     x1, y1, x2, y2 = boxes[0]
+    w, h = x2 - x1, y2 - y1
+    size = max(w, h) * 1.3  # margin
+    cx, cy = (x1 + x2) / 2, (y1 + y2) / 2
 
-    w = x2 - x1
-    h = y2 - y1
-
-    # make square
-    size = max(w, h)
-
-    cx = (x1 + x2) / 2
-    cy = (y1 + y2) / 2
-
-    # margin 0.3
-    size = size * 1.3
-
-    new_x1 = int(cx - size / 2)
-    new_y1 = int(cy - size / 2)
-    new_x2 = int(cx + size / 2)
-    new_y2 = int(cy + size / 2)
-
-    # FIX: if out of bound → fallback to tight box
-    if new_x1 < 0 or new_y1 < 0 or new_x2 > frame.shape[1] or new_y2 > frame.shape[0]:
-        new_x1 = int(max(0, x1))
-        new_y1 = int(max(0, y1))
-        new_x2 = int(min(frame.shape[1], x2))
-        new_y2 = int(min(frame.shape[0], y2))
+    new_x1 = int(max(0, cx - size / 2))
+    new_y1 = int(max(0, cy - size / 2))
+    new_x2 = int(min(frame.shape[1], cx + size / 2))
+    new_y2 = int(min(frame.shape[0], cy + size / 2))
 
     face = frame[new_y1:new_y2, new_x1:new_x2]
-
     if face.size == 0:
         return None
-
     return face
 
 # ======================
-# PREDICT
+# PREDICT (video-level using max + mean like testing)
 # ======================
-def predict(frames):
+def predict_video(frames):
+    if len(frames) == 0:
+        return None, 0
 
-    preds = []
+    frames_tensor = torch.stack([transform(f) for f in frames]).to(DEVICE)
+    batch, c, h, w = frames_tensor.shape
+    frames_tensor = frames_tensor.view(batch, c, h, w)
 
-    for frame in frames:
-        img = transform(frame).unsqueeze(0).to(DEVICE)
-
-        with torch.no_grad():
-            output = model(img)
-            prob = torch.sigmoid(output).item()
-
-        preds.append(prob)
-
-    avg = np.mean(preds)
-
-    label = "Fake" if avg > 0.5 else "Real"
-    confidence = abs(avg - 0.5) * 200
-
-    return label, confidence
+    with torch.no_grad():
+        outputs = model(frames_tensor)
+        outputs = outputs.view(-1)
+        outputs_max = outputs.max()
+        outputs_mean = outputs.mean()
+        final_score = 0.7 * outputs_max + 0.3 * outputs_mean
+        label = "Fake" if torch.sigmoid(final_score) > 0.5 else "Real"
+        confidence = abs(torch.sigmoid(final_score) - 0.5) * 200
+    return label, confidence.item()
 
 # ======================
 # UI
@@ -152,7 +147,6 @@ st.title("🎬 Deepfake Video Detection")
 video_file = st.file_uploader("Upload Video", type=["mp4", "mov", "avi"])
 
 if video_file:
-
     tfile = tempfile.NamedTemporaryFile(delete=False)
     tfile.write(video_file.read())
     video_path = tfile.name
@@ -160,38 +154,28 @@ if video_file:
     st.video(video_path)
 
     if st.button("Detect"):
-
         cap = cv2.VideoCapture(video_path)
-
         fps = cap.get(cv2.CAP_PROP_FPS)
-        interval = int(fps)
-
+        interval = int(fps)  # 1 frame per second
         frames = []
         count = 0
 
         with st.spinner("Processing video..."):
-
             while True:
                 ret, frame = cap.read()
                 if not ret:
                     break
-
                 if count % interval == 0:
                     face = crop_face(frame)
-
                     if face is not None:
                         frames.append(face)
-
                 count += 1
-
         cap.release()
 
         if len(frames) == 0:
             st.error("No face detected")
         else:
             st.success(f"{len(frames)} faces extracted")
-
-            label, confidence = predict(frames)
-
+            label, confidence = predict_video(frames)
             st.subheader(f"Prediction: {label}")
             st.subheader(f"Confidence: {confidence:.2f}%")
