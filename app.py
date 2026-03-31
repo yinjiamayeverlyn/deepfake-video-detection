@@ -61,7 +61,7 @@ def create_model():
     )
     return efficientnet.to(DEVICE)
 
-MODEL_PATH = r"E:/dfd_balance/best_deepfake_model.pth"
+MODEL_PATH = "best_deepfake_model.pth"
 
 @st.cache_resource
 def load_model():
