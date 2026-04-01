@@ -189,35 +189,43 @@ if video_file:
             st.error("No face detected")
         else:
             st.success(f"{len(frames)} faces extracted")
-
+                
             # ======================
-            # TOGGLE BUTTON
-            # ======================
-            if len(frames) > 15:
-                if st.session_state.show_all_faces:
-                    if st.button("Hide remaining extracted faces"):
-                        st.session_state.show_all_faces = False
-                else:
-                    if st.button("View remaining extracted faces"):
-                        st.session_state.show_all_faces = True
-
-            # ======================
-            # SHOW FACES (5 COLUMNS)
+            # SHOW FACES (EXPANDER STYLE)
             # ======================
             st.subheader("Extracted Faces")
-
-            if st.session_state.show_all_faces:
-                display_frames = frames
-            else:
-                display_frames = frames[:15]
-
+            
+            total_faces = len(frames)
+            
+            # --- Show first 15 faces ---
+            preview_faces = frames[:15]
             cols = st.columns(5)
-
-            for i, face in enumerate(display_frames):
+            
+            for i, face in enumerate(preview_faces):
                 col = cols[i % 5]
                 face_rgb = cv2.cvtColor(face, cv2.COLOR_BGR2RGB)
-                col.image(face_rgb, use_container_width=True)
-
+                col.image(
+                    face_rgb,
+                    caption=f"Face {i+1}",
+                    use_container_width=True
+                )
+            
+            # --- Show remaining faces in expander ---
+            if total_faces > 15:
+                st.caption(f"Showing 15 of {total_faces} extracted faces")
+            
+                with st.expander(f"View remaining {total_faces - 15} faces"):
+                    cols_all = st.columns(5)
+            
+                    for i, face in enumerate(frames[15:], start=16):
+                        col = cols_all[(i - 16) % 5]
+                        face_rgb = cv2.cvtColor(face, cv2.COLOR_BGR2RGB)
+                        col.image(
+                            face_rgb,
+                            caption=f"Face {i}",
+                            use_container_width=True
+                        )
+            
             # ======================
             # PREDICTION
             # ======================
