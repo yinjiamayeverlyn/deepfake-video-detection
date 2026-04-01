@@ -269,16 +269,10 @@ if video_file:
             # --- Gauge size ---
             gauge_font = 52
             
-            # --- Gauge chart ---
+            # --- Create figure ---
             fig = go.Figure(go.Indicator(
                 mode="gauge+number",
                 value=fake_prob,
-            
-                # 👇 STATUS TEXT (styled)
-                title={
-                    'text': f"<span style='font-size:18px; color:{color};'><b>{status}</b></span>",
-                    'align': 'center'
-                },
             
                 number={
                     'font': {'size': gauge_font},
@@ -286,7 +280,7 @@ if video_file:
                     'suffix': '%'
                 },
             
-                domain={'x': [0.05, 0.95], 'y': [0.15, 1]},  # 👈 push gauge UP
+                domain={'x': [0, 1], 'y': [0, 1]},  # full domain for easier positioning
             
                 gauge={
                     'axis': {
@@ -308,10 +302,19 @@ if video_file:
                 }
             ))
             
-            # --- Layout tuning ---            
+            # --- Add status text below the number ---
             fig.update_layout(
-                height=420, 
-                margin=dict(t=60, b=30, l=40, r=40),
+                height=420,
+                margin=dict(t=40, b=40, l=40, r=40),
+                annotations=[
+                    dict(
+                        x=0.5,               # center horizontally
+                        y=0.22,              # lower than number (adjust as needed)
+                        text=f"<b>{status}</b>",
+                        showarrow=False,
+                        font=dict(size=24, color=color)
+                    )
+                ]
             )
             # --- Show in Streamlit ---
             st.plotly_chart(fig, use_container_width=True)
