@@ -267,7 +267,7 @@ if video_file:
                 gradient_steps.append({'range': [i, i + 5], 'color': hex_color})
             
             # --- Gauge size ---
-            gauge_font = 36
+            gauge_font = 48
             
             # --- Gauge chart ---
             fig = go.Figure(go.Indicator(
@@ -280,7 +280,12 @@ if video_file:
                     'suffix': '%'
                 },
                 gauge={
-                    'axis': {'range': [0, 100], 'tickwidth': 1, 'tickcolor': "lightgray"},
+                    'axis': {
+                        'range': [0, 100],
+                        'tickwidth': 1,
+                        'tickcolor': "lightgray",
+                        'tickfont': {'size': 14, 'color': '#555', 'family': 'Arial Black'}
+                    },
                     'bar': {'color': color, 'thickness': 0.25},
                     'bgcolor': 'white',
                     'steps': gradient_steps,
@@ -294,10 +299,11 @@ if video_file:
                 }
             ))
             
-            # --- Layout tuning ---
+            # --- Layout tuning ---            
             fig.update_layout(
-                height=350,
-                margin=dict(t=30, b=0, l=0, r=0)
+                height=380,
+                margin=dict(t=40, b=20, l=40, r=40),
+                font=dict(family="Arial Black")
             )
             
             # --- Show in Streamlit ---
