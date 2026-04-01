@@ -41,6 +41,12 @@ if not st.session_state["auth"]:
     st.stop()
 
 # ======================
+# SESSION STATE (TOGGLE)
+# ======================
+if "show_all_faces" not in st.session_state:
+    st.session_state.show_all_faces = False
+
+# ======================
 # DEVICE
 # ======================
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -138,7 +144,6 @@ def predict_video(frames):
 
         final_score = 0.7 * outputs_max + 0.3 * outputs_mean
 
-        # Convert to fake probability (0–100%)
         fake_prob = torch.sigmoid(final_score).item() * 100
 
     return fake_prob
@@ -185,15 +190,42 @@ if video_file:
         else:
             st.success(f"{len(frames)} faces extracted")
 
+            # ======================
+            # TOGGLE BUTTON
+            # ======================
+            if len(frames) > 15:
+                if st.session_state.show_all_faces:
+                    if st.button("Hide remaining extracted faces"):
+                        st.session_state.show_all_faces = False
+                else:
+                    if st.button("View remaining extracted faces"):
+                        st.session_state.show_all_faces = True
+
+            # ======================
+            # SHOW FACES (5 COLUMNS)
+            # ======================
+            st.subheader("Extracted Faces")
+
+            if st.session_state.show_all_faces:
+                display_frames = frames
+            else:
+                display_frames = frames[:15]
+
+            cols = st.columns(5)
+
+            for i, face in enumerate(display_frames):
+                col = cols[i % 5]
+                face_rgb = cv2.cvtColor(face, cv2.COLOR_BGR2RGB)
+                col.image(face_rgb, use_container_width=True)
+
+            # ======================
+            # PREDICTION
+            # ======================
             fake_prob = predict_video(frames)
 
-            # Display result
             st.subheader(f"Fake Probability: {fake_prob:.2f}%")
-
-            # Progress bar
             st.progress(int(fake_prob))
 
-            # Interpretation
             if fake_prob > 70:
                 st.error("Highly likely FAKE")
             elif fake_prob > 40:
