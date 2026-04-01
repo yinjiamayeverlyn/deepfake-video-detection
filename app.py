@@ -295,7 +295,7 @@ if video_file:
                     'borderwidth': 1,
                     'bordercolor': '#ddd',
                     'threshold': {
-                        'line': {'color': color, 'width': 4},
+                        'line': {'color': "black", 'width': 4},
                         'thickness': 1.0,
                         'value': fake_prob
                     }
