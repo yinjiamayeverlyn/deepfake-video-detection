@@ -46,7 +46,7 @@ if not st.session_state["auth"]:
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # ======================
-# MODEL ARCHITECTURE (matches your testing)
+# MODEL ARCHITECTURE
 # ======================
 def create_model():
     efficientnet = models.efficientnet_b0(weights=None)
@@ -105,7 +105,7 @@ def crop_face(frame):
 
     x1, y1, x2, y2 = boxes[0]
     w, h = x2 - x1, y2 - y1
-    size = max(w, h) * 1.3  # margin
+    size = max(w, h) * 1.3
     cx, cy = (x1 + x2) / 2, (y1 + y2) / 2
 
     new_x1 = int(max(0, cx - size / 2))
@@ -114,30 +114,34 @@ def crop_face(frame):
     new_y2 = int(min(frame.shape[0], cy + size / 2))
 
     face = frame[new_y1:new_y2, new_x1:new_x2]
+
     if face.size == 0:
         return None
+
     return face
 
 # ======================
-# PREDICT (video-level using max + mean like testing)
+# PREDICT (FAKE PROBABILITY)
 # ======================
 def predict_video(frames):
     if len(frames) == 0:
-        return None, 0
+        return 0
 
     frames_tensor = torch.stack([transform(f) for f in frames]).to(DEVICE)
-    batch, c, h, w = frames_tensor.shape
-    frames_tensor = frames_tensor.view(batch, c, h, w)
 
     with torch.no_grad():
         outputs = model(frames_tensor)
         outputs = outputs.view(-1)
+
         outputs_max = outputs.max()
         outputs_mean = outputs.mean()
+
         final_score = 0.7 * outputs_max + 0.3 * outputs_mean
-        label = "Fake" if torch.sigmoid(final_score) > 0.5 else "Real"
-        confidence = abs(torch.sigmoid(final_score) - 0.5) * 200
-    return label, confidence.item()
+
+        # Convert to fake probability (0–100%)
+        fake_prob = torch.sigmoid(final_score).item() * 100
+
+    return fake_prob
 
 # ======================
 # UI
@@ -156,7 +160,8 @@ if video_file:
     if st.button("Detect"):
         cap = cv2.VideoCapture(video_path)
         fps = cap.get(cv2.CAP_PROP_FPS)
-        interval = int(fps)  # 1 frame per second
+        interval = int(fps) if fps > 0 else 1
+
         frames = []
         count = 0
 
@@ -165,17 +170,33 @@ if video_file:
                 ret, frame = cap.read()
                 if not ret:
                     break
+
                 if count % interval == 0:
                     face = crop_face(frame)
                     if face is not None:
                         frames.append(face)
+
                 count += 1
+
         cap.release()
 
         if len(frames) == 0:
             st.error("No face detected")
         else:
             st.success(f"{len(frames)} faces extracted")
-            label, confidence = predict_video(frames)
-            st.subheader(f"Prediction: {label}")
-            st.subheader(f"Confidence: {confidence:.2f}%")
+
+            fake_prob = predict_video(frames)
+
+            # Display result
+            st.subheader(f"Fake Probability: {fake_prob:.2f}%")
+
+            # Progress bar
+            st.progress(int(fake_prob))
+
+            # Interpretation
+            if fake_prob > 70:
+                st.error("⚠️ Highly likely FAKE")
+            elif fake_prob > 40:
+                st.warning("⚠️ Suspicious (uncertain)")
+            else:
+                st.success("✅ Likely REAL")
