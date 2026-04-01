@@ -275,7 +275,7 @@ if video_file:
                 value=fake_prob,
                 title={'text': ""},
                 number={
-                    'font': {'size': gauge_font, 'color': '#333', 'family': 'Arial Black'},
+                    'font': {'size': gauge_font, 'color': '#333'},
                     'valueformat': '.2f',
                     'suffix': '%'
                 },
@@ -284,7 +284,7 @@ if video_file:
                         'range': [0, 100],
                         'tickwidth': 1,
                         'tickcolor': "lightgray",
-                        'tickfont': {'size': 14, 'color': '#555', 'family': 'Arial Black'}
+                        'tickfont': {'size': 14, 'color': '#555'}
                     },
                     'bar': {'color': color, 'thickness': 0.25},
                     'bgcolor': 'white',
