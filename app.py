@@ -195,8 +195,8 @@ if video_file:
 
             # Interpretation
             if fake_prob > 70:
-                st.error("⚠️ Highly likely FAKE")
+                st.error("Highly likely FAKE")
             elif fake_prob > 40:
-                st.warning("⚠️ Suspicious (uncertain)")
+                st.warning("Suspicious (uncertain)")
             else:
-                st.success("✅ Likely REAL")
+                st.success("Likely REAL")
