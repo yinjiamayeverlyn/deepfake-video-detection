@@ -267,7 +267,7 @@ if video_file:
                 gradient_steps.append({'range': [i, i + 5], 'color': hex_color})
             
             # --- Gauge size ---
-            gauge_font = 48
+            gauge_font = 52
             
             # --- Gauge chart ---
             fig = go.Figure(go.Indicator(
@@ -275,7 +275,7 @@ if video_file:
                 value=fake_prob,
                 title={'text': ""},
                 number={
-                    'font': {'size': gauge_font, 'color': '#333', 'family': 'Arial Black'},
+                    'font': {'size': gauge_font},
                     'valueformat': '.2f',
                     'suffix': '%'
                 },
