@@ -284,7 +284,7 @@ if video_file:
                         'range': [0, 100],
                         'tickwidth': 1,
                         'tickcolor': "lightgray",
-                        'tickfont': {'size': 14, 'color': '#555'}
+                        'tickfont': {'size': 18}
                     },
                     'bar': {'color': color, 'thickness': 0.25},
                     'bgcolor': 'white',
