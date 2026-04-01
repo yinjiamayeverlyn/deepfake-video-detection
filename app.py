@@ -312,7 +312,7 @@ if video_file:
                         y=0.22,              # lower than number (adjust as needed)
                         text=f"<b>{status}</b>",
                         showarrow=False,
-                        font=dict(size=24, color=color)
+                        font=dict(size=32, color=color)
                     )
                 ]
             )
