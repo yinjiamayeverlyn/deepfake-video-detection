@@ -303,7 +303,6 @@ if video_file:
             fig.update_layout(
                 height=380,
                 margin=dict(t=40, b=20, l=40, r=40),
-                font=dict(family="Arial Black")
             )
             
             # --- Show in Streamlit ---
