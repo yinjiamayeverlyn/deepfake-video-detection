@@ -8,6 +8,7 @@ from PIL import Image
 from facenet_pytorch import MTCNN
 from torchvision import transforms, models
 import torch.nn as nn
+import plotly.graph_objects as go
 
 # ======================
 # PAGE CONFIG
@@ -231,12 +232,73 @@ if video_file:
             # ======================
             fake_prob = predict_video(frames)
 
+            # ======================
+            # RESULT + GAUGE
+            # ======================
             st.subheader(f"Fake Probability: {fake_prob:.2f}%")
-            st.progress(int(fake_prob))
-
+            
+            # --- Determine label & color ---
             if fake_prob > 70:
-                st.error("Highly likely FAKE")
+                status = "Highly likely FAKE"
+                color = "red"
+                st.error(status)
             elif fake_prob > 40:
-                st.warning("Suspicious (uncertain)")
+                status = "Suspicious (uncertain)"
+                color = "yellow"
+                st.warning(status)
             else:
-                st.success("Likely REAL")
+                status = "Likely REAL"
+                color = "green"
+                st.success(status)
+            
+            # --- Create smooth gradient steps manually ---
+            gradient_steps = []
+            for i in range(0, 101, 5):
+                if i < 50:
+                    r = 182 + int((255 - 182) * (i / 50))
+                    g = 239 + int((233 - 239) * (i / 50))
+                    b = 162 + int((169 - 162) * (i / 50))
+                else:
+                    r = 255
+                    g = 233 - int((233 - 182) * ((i - 50) / 50))
+                    b = 169 - int((169 - 166) * ((i - 50) / 50))
+            
+                hex_color = f'#{r:02X}{g:02X}{b:02X}'
+                gradient_steps.append({'range': [i, i + 5], 'color': hex_color})
+            
+            # --- Gauge size ---
+            gauge_font = 36
+            
+            # --- Gauge chart ---
+            fig = go.Figure(go.Indicator(
+                mode="gauge+number",
+                value=fake_prob,
+                title={'text': ""},
+                number={
+                    'font': {'size': gauge_font, 'color': '#333', 'family': 'Arial Black'},
+                    'valueformat': '.2f',
+                    'suffix': '%'
+                },
+                gauge={
+                    'axis': {'range': [0, 100], 'tickwidth': 1, 'tickcolor': "lightgray"},
+                    'bar': {'color': color, 'thickness': 0.25},
+                    'bgcolor': 'white',
+                    'steps': gradient_steps,
+                    'borderwidth': 1,
+                    'bordercolor': '#ddd',
+                    'threshold': {
+                        'line': {'color': color, 'width': 4},
+                        'thickness': 1.0,
+                        'value': fake_prob
+                    }
+                }
+            ))
+            
+            # --- Layout tuning ---
+            fig.update_layout(
+                height=350,
+                margin=dict(t=30, b=0, l=0, r=0)
+            )
+            
+            # --- Show in Streamlit ---
+            st.plotly_chart(fig, use_container_width=True)
