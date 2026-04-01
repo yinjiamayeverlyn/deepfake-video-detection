@@ -273,12 +273,21 @@ if video_file:
             fig = go.Figure(go.Indicator(
                 mode="gauge+number",
                 value=fake_prob,
-                title={'text': ""},
+            
+                # 👇 STATUS TEXT (styled)
+                title={
+                    'text': f"<span style='font-size:18px; color:{color};'><b>{status}</b></span>",
+                    'align': 'center'
+                },
+            
                 number={
                     'font': {'size': gauge_font},
                     'valueformat': '.2f',
                     'suffix': '%'
                 },
+            
+                domain={'x': [0.05, 0.95], 'y': [0.15, 1]},  # 👈 push gauge UP
+            
                 gauge={
                     'axis': {
                         'range': [0, 100],
@@ -292,7 +301,7 @@ if video_file:
                     'borderwidth': 1,
                     'bordercolor': '#ddd',
                     'threshold': {
-                        'line': {'color': "black", 'width': 4},
+                        'line': {'color': color, 'width': 4},
                         'thickness': 1.0,
                         'value': fake_prob
                     }
@@ -301,9 +310,8 @@ if video_file:
             
             # --- Layout tuning ---            
             fig.update_layout(
-                height=380,
-                margin=dict(t=40, b=20, l=40, r=40),
+                height=420, 
+                margin=dict(t=60, b=30, l=40, r=40),
             )
-            
             # --- Show in Streamlit ---
             st.plotly_chart(fig, use_container_width=True)
