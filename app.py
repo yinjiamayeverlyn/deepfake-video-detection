@@ -289,7 +289,7 @@ if valid_video and video_path and os.path.exists(video_path):
                 cap.release()
 
             # ======================
-            # SHOW FACES (EXPANDER BACK 🔥)
+            # SHOW FACES (EXPANDER)
             # ======================
             if len(frames) == 0:
                 st.error("No face detected.")
@@ -327,17 +327,20 @@ if valid_video and video_path and os.path.exists(video_path):
                 st.subheader(f"Fake Probability: {fake_prob:.2f}%")
 
                 # ======================
-                # GAUGE BACK 🔥
+                # GAUGE
                 # ======================
                 if fake_prob > 70:
                     status = "Highly likely FAKE"
                     color = "red"
+                    st.error(status)
                 elif fake_prob > 40:
                     status = "Suspicious (uncertain)"
                     color = "orange"
+                    st.warning(status)
                 else:
                     status = "Likely REAL"
                     color = "green"
+                    st.success(status)
 
                 gradient_steps = []
                 for i in range(0, 101, 5):
