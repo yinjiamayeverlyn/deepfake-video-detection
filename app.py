@@ -295,13 +295,6 @@ if valid_video and video_path and os.path.exists(video_path):
     
             cap.release()
     
-        except Exception as e:
-            st.error("Something went wrong during processing.")
-    
-        finally:
-            # ALWAYS RESET (VERY IMPORTANT)
-            st.session_state.is_detecting = False
-
             # ======================
             # SHOW FACES (EXPANDER)
             # ======================
