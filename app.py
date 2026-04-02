@@ -350,57 +350,47 @@ if valid_video and video_path and os.path.exists(video_path):
                         g = 233 - int((233 - 182) * ((i - 50) / 50))
                         b = 169 - int((169 - 166) * ((i - 50) / 50))
 
-                    hex_color = f'#{r:02X}{g:02X}{b:02X}' 
-                    gradient_steps.append({'range': [i, i + 5], 'color': hex_color}) 
-                    
-                # --- Gauge size --- 
-                gauge_font = 52 
-                
-                # --- Create figure --- 
-                fig = go.Figure(go.Indicator( 
-                    mode="gauge+number", 
-                    value=fake_prob, 
-                    
-                    number={ 
-                        'font': {'size': gauge_font, 'color': color}, 
-                        'valueformat': '.2f', 
-                        'suffix': '%' }, 
-                    domain={'x': [0, 1], 'y': [0, 1]}, # full domain for easier positioning 
-                    
-                    gauge={ 
-                        'axis': { 
-                            'range': [0, 100], 
-                            'tickwidth': 1, 
-                            'tickcolor': "lightgray", 
-                            'tickfont': {'size': 18} }, 
-                        'bar': {'color': color, 'thickness': 0.25}, 
+                    gradient_steps.append({
+                        'range': [i, i + 5],
+                        'color': f'#{r:02X}{g:02X}{b:02X}'
+                    })
+
+                fig = go.Figure(go.Indicator(
+                    mode="gauge+number",
+                    value=fake_prob,
+
+                    number={
+                        'font': {
+                            'size': 52,
+                            'color': color
+                        },
+                        'valueformat': '.2f',
+                        'suffix': '%'
+                    },
+
+                    gauge={
+                        'axis': {'range': [0, 100]},
+                        'bar': {'color': color},
                         'bgcolor': 'white', 
-                        'steps': gradient_steps, 
-                        'borderwidth': 1,
-                        'bordercolor': '#ddd',
-                        'threshold': { 
-                            'line': {'color': "black", 'width': 4}, 
-                            'thickness': 1.0, 
-                            'value': fake_prob 
-                        } 
-                    } 
-                )) 
-                
-                # --- Add status text below the number --- 
-                fig.update_layout( 
-                    height=420, 
-                    margin=dict(t=40, b=40, l=40, r=40), 
-                    annotations=[ 
-                        dict( 
-                            x=0.5, # center horizontally 
-                            y=0.22, # lower than number (adjust as needed) 
-                            text=f"<b>{status}</b>", 
-                            showarrow=False, 
-                            font=dict(size=32, color=color) 
-                        ) 
-                    ] 
+                        'steps': gradient_steps,
+                        'threshold': {
+                            'line': {'color': "black", 'width': 3},
+                            'value': fake_prob
+                        }
+                    }
+                ))
+
+                fig.update_layout(
+                    height=420,
+                    annotations=[dict(
+                        x=0.5,
+                        y=0.22,
+                        text=f"<b>{status}</b>",
+                        showarrow=False,
+                        font=dict(size=28, color=color)
+                    )]
                 )
-                
+
                 st.plotly_chart(fig, use_container_width=True)
 
         except:
