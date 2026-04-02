@@ -173,7 +173,7 @@ video_filename = None
 valid_video = False
 
 # ======================
-# OPTION 1: DEVICE
+# DEVICE UPLOAD
 # ======================
 if upload_option == "Upload from device":
     uploaded_file = st.file_uploader("Choose a video file", type=["mp4", "mov", "avi"])
@@ -186,34 +186,28 @@ if upload_option == "Upload from device":
             video_path = tfile.name
             video_filename = uploaded_file.name
             valid_video = True
-
-        except Exception as e:
+        except:
             st.error("Failed to process uploaded file.")
-            valid_video = False
 
 # ======================
-# OPTION 2: URL
+# URL INPUT
 # ======================
 elif upload_option == "Provide video URL":
     video_url = st.text_input("Paste video URL (Google Drive / Dropbox)")
 
     if video_url:
         try:
-            # --- Dropbox handling ---
             if "dropbox.com" in video_url:
                 video_url = video_url.replace("dl=0", "dl=1")
-                video_url = video_url.replace(
-                    "www.dropbox.com", "dl.dropboxusercontent.com"
-                )
+                video_url = video_url.replace("www.dropbox.com", "dl.dropboxusercontent.com")
 
-            # --- Google Drive handling ---
             elif "drive.google.com" in video_url:
                 if "/d/" in video_url:
                     file_id = video_url.split("/d/")[1].split("/")[0]
                 elif "id=" in video_url:
                     file_id = video_url.split("id=")[1].split("&")[0]
                 else:
-                    raise ValueError("Invalid Google Drive link")
+                    raise ValueError()
 
                 video_url = f"https://drive.google.com/uc?export=download&id={file_id}"
 
@@ -225,15 +219,13 @@ elif upload_option == "Provide video URL":
             video_path = os.path.join(tempfile.gettempdir(), video_filename)
 
             urllib.request.urlretrieve(video_url, video_path)
-
             valid_video = True
 
-        except Exception:
-            st.error("Unable to download video. Make sure the link is public.")
-            valid_video = False
+        except:
+            st.error("Unable to download video. Ensure link is public.")
 
 # ======================
-# IF VIDEO READY
+# PROCESS VIDEO
 # ======================
 if valid_video and video_path and os.path.exists(video_path):
 
@@ -242,12 +234,9 @@ if valid_video and video_path and os.path.exists(video_path):
 
     malaysia_time = datetime.datetime.now(ZoneInfo("Asia/Kuala_Lumpur"))
     upload_time = malaysia_time.strftime('%Y-%m-%d %H:%M:%S')
-
     st.markdown(f"**Upload time:** `{upload_time}`")
 
-    # ======================
-    # VALIDATE VIDEO
-    # ======================
+    # --- duration check ---
     cap = cv2.VideoCapture(video_path)
     fps = cap.get(cv2.CAP_PROP_FPS)
     frame_count = cap.get(cv2.CAP_PROP_FRAME_COUNT)
@@ -257,28 +246,22 @@ if valid_video and video_path and os.path.exists(video_path):
     if "is_detecting" not in st.session_state:
         st.session_state.is_detecting = False
 
-    submit_clicked = st.button("Submit for Detection")
-
-    if submit_clicked:
+    if st.button("Submit for Detection"):
 
         if st.session_state.is_detecting:
-            st.warning("Processing already in progress. Please wait.")
+            st.warning("Already processing. Please wait.")
             st.stop()
 
         st.session_state.is_detecting = True
 
         try:
             if duration < 4:
-                st.error("Video too short (< 4 seconds).")
+                st.error("Video too short (<4 seconds).")
                 st.session_state.is_detecting = False
                 st.stop()
 
-            # ======================
-            # PROCESS VIDEO
-            # ======================
             frames = []
             cap = cv2.VideoCapture(video_path)
-            fps = cap.get(cv2.CAP_PROP_FPS)
             interval = int(fps) if fps > 0 else 1
             count = 0
 
@@ -306,35 +289,118 @@ if valid_video and video_path and os.path.exists(video_path):
                 cap.release()
 
             # ======================
-            # RESULT
+            # SHOW FACES (EXPANDER BACK 🔥)
             # ======================
             if len(frames) == 0:
                 st.error("No face detected.")
             else:
                 st.success(f"{len(frames)} faces extracted")
 
-                fake_prob = predict_video(frames)
+                st.subheader("Extracted Faces")
 
-                if fake_prob > 70:
-                    status = "Highly likely FAKE"
-                    color = "red"
-                    st.error(status)
-                elif fake_prob > 40:
-                    status = "Suspicious"
-                    color = "orange"
-                    st.warning(status)
-                else:
-                    status = "Likely REAL"
-                    color = "green"
-                    st.success(status)
+                total_faces = len(frames)
+
+                preview_faces = frames[:15]
+                cols = st.columns(5)
+
+                for i, face in enumerate(preview_faces):
+                    col = cols[i % 5]
+                    face_rgb = cv2.cvtColor(face, cv2.COLOR_BGR2RGB)
+                    col.image(face_rgb, caption=f"Face {i+1}", use_container_width=True)
+
+                if total_faces > 15:
+                    st.caption(f"Showing 15 of {total_faces} faces")
+
+                    with st.expander(f"View remaining {total_faces - 15} faces"):
+                        cols_all = st.columns(5)
+
+                        for i, face in enumerate(frames[15:], start=16):
+                            col = cols_all[(i - 16) % 5]
+                            face_rgb = cv2.cvtColor(face, cv2.COLOR_BGR2RGB)
+                            col.image(face_rgb, caption=f"Face {i}", use_container_width=True)
+
+                # ======================
+                # PREDICTION
+                # ======================
+                fake_prob = predict_video(frames)
 
                 st.subheader(f"Fake Probability: {fake_prob:.2f}%")
 
-        except Exception as e:
-            st.error("Unexpected error occurred during processing.")
+                # ======================
+                # GAUGE BACK 🔥
+                # ======================
+                if fake_prob > 70:
+                    status = "Highly likely FAKE"
+                    color = "red"
+                elif fake_prob > 40:
+                    status = "Suspicious (uncertain)"
+                    color = "orange"
+                else:
+                    status = "Likely REAL"
+                    color = "green"
+
+                gradient_steps = []
+                for i in range(0, 101, 5):
+                    if i < 50:
+                        r = 182 + int((255 - 182) * (i / 50))
+                        g = 239 + int((233 - 239) * (i / 50))
+                        b = 162 + int((169 - 162) * (i / 50))
+                    else:
+                        r = 255
+                        g = 233 - int((233 - 182) * ((i - 50) / 50))
+                        b = 169 - int((169 - 166) * ((i - 50) / 50))
+
+                    gradient_steps.append({
+                        'range': [i, i + 5],
+                        'color': f'#{r:02X}{g:02X}{b:02X}'
+                    })
+
+                font_family = "Arial Black"
+
+                fig = go.Figure(go.Indicator(
+                    mode="gauge+number",
+                    value=fake_prob,
+
+                    number={
+                        'font': {
+                            'size': 52,
+                            'color': color,
+                            'family': font_family
+                        },
+                        'valueformat': '.2f',
+                        'suffix': '%'
+                    },
+
+                    gauge={
+                        'axis': {'range': [0, 100]},
+                        'bar': {'color': color},
+                        'steps': gradient_steps,
+                        'threshold': {
+                            'line': {'color': "black", 'width': 3},
+                            'value': fake_prob
+                        }
+                    }
+                ))
+
+                fig.update_layout(
+                    height=420,
+                    font=dict(family=font_family),
+                    annotations=[dict(
+                        x=0.5,
+                        y=0.22,
+                        text=f"<b>{status}</b>",
+                        showarrow=False,
+                        font=dict(size=28, color=color)
+                    )]
+                )
+
+                st.plotly_chart(fig, use_container_width=True)
+
+        except:
+            st.error("Error during processing.")
+
         finally:
             st.session_state.is_detecting = False
-
 
 # ======================
 # FOOTER
@@ -342,6 +408,6 @@ if valid_video and video_path and os.path.exists(video_path):
 st.markdown("""
 <hr style="margin-top: 50px; margin-bottom: 10px;">
 <div style='text-align: center; font-size: 14px; color: gray;'>
-    © 2025 Deepfake Detection Web App | Developed for University Final Year Project 22004860
+    © 2025 Deepfake Video Detection Web App | Developed for University Final Year Project 22004860
 </div>
 """, unsafe_allow_html=True)
