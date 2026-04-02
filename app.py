@@ -261,247 +261,160 @@ if valid_video and video_path and os.path.exists(video_path):
         try:
             if duration < 4:
                 st.error("Video too short (<4 seconds). Please upload a longer video.")
-                
-                # RESET STATE
                 st.session_state.is_detecting = False
                 st.stop()
-    
+        
             frames = []
             cap = cv2.VideoCapture(video_path)
             interval = int(fps) if fps > 0 else 1
             count = 0
-    
+        
             with st.spinner("Processing video..."):
-    
+        
                 faces_dir = tempfile.mkdtemp(prefix="faces_")
-    
+        
                 if "temp_dirs" not in st.session_state:
                     st.session_state.temp_dirs = []
-    
+        
                 st.session_state.temp_dirs.append(faces_dir)
-    
+        
                 while True:
                     ret, frame = cap.read()
                     if not ret:
                         break
-    
+        
                     if count % interval == 0:
                         face = crop_face(frame)
                         if face is not None:
                             frames.append(face)
-    
+        
                     count += 1
-    
+        
             cap.release()
-    
-            # ======================
-            # SHOW FACES (EXPANDER)
-            # ======================
+        
             if len(frames) == 0:
                 st.error("No face detected.")
+                st.session_state.is_detecting = False
+                st.stop()
+        
+            st.success(f"{len(frames)} faces extracted")
+        
+            # --- Prediction ---
+            fake_prob = predict_video(frames)
+            if fake_prob > 70:
+                status = "Highly likely FAKE"
+                color = "red"
+            elif fake_prob > 40:
+                status = "Suspicious (uncertain)"
+                color = "orange"
             else:
-                st.success(f"{len(frames)} faces extracted")
-
-                st.subheader("Extracted Faces")
-
-                total_faces = len(frames)
-
-                preview_faces = frames[:15]
-                cols = st.columns(5)
-
-                for i, face in enumerate(preview_faces):
-                    col = cols[i % 5]
-                    face_rgb = cv2.cvtColor(face, cv2.COLOR_BGR2RGB)
-                    col.image(face_rgb, caption=f"Face {i+1}", use_container_width=True)
-
-                if total_faces > 15:
-                    st.caption(f"Showing 15 of {total_faces} faces")
-
-                    with st.expander(f"View remaining {total_faces - 15} faces"):
-                        cols_all = st.columns(5)
-
-                        for i, face in enumerate(frames[15:], start=16):
-                            col = cols_all[(i - 16) % 5]
-                            face_rgb = cv2.cvtColor(face, cv2.COLOR_BGR2RGB)
-                            col.image(face_rgb, caption=f"Face {i}", use_container_width=True)
-
-                # ======================
-                # PREDICTION
-                # ======================
-                fake_prob = predict_video(frames)
-                
-                st.subheader(f"Fake Probability: {fake_prob:.2f}%")
-                
-                # ======================
-                # GAUGE
-                # ======================
-                if fake_prob > 70:
-                    status = "Highly likely FAKE"
-                    color = "red"
-                    st.error(status)
-                elif fake_prob > 40:
-                    status = "Suspicious (uncertain)"
-                    color = "orange"
-                    st.warning(status)
+                status = "Likely REAL"
+                color = "green"
+        
+            st.subheader(f"Fake Probability: {fake_prob:.2f}%")
+        
+            # --- Gauge ---
+            gradient_steps = []
+            for i in range(0, 101, 5):
+                if i < 50:
+                    r = 182 + int((255 - 182) * (i / 50))
+                    g = 239 + int((233 - 239) * (i / 50))
+                    b = 162 + int((169 - 162) * (i / 50))
                 else:
-                    status = "Likely REAL"
-                    color = "green"
-                    st.success(status)
-                
-                gradient_steps = []
-                for i in range(0, 101, 5):
-                    if i < 50:
-                        r = 182 + int((255 - 182) * (i / 50))
-                        g = 239 + int((233 - 239) * (i / 50))
-                        b = 162 + int((169 - 162) * (i / 50))
-                    else:
-                        r = 255
-                        g = 233 - int((233 - 182) * ((i - 50) / 50))
-                        b = 169 - int((169 - 166) * ((i - 50) / 50))
-                
-                    gradient_steps.append({
-                        'range': [i, i + 5],
-                        'color': f'#{r:02X}{g:02X}{b:02X}'
-                    })
-                
-                font_family = "Arial Black"
-                
-                fig = go.Figure(go.Indicator(
-                    mode="gauge+number",
-                    value=fake_prob,
-                
-                    number={
-                        'font': {
-                            'size': 46,
-                            'color': color,
-                            'family': font_family
-                        },
-                        'valueformat': '.2f',
-                        'suffix': '%'
-                    },
-                
-                    gauge={
-                        'axis': {'range': [0, 100]},
-                        'bar': {'color': color},
-                        'steps': gradient_steps,
-                        'threshold': {
-                            'line': {'color': "black", 'width': 3},
-                            'value': fake_prob
-                        }
-                    }
-                ))
-                
-                fig.update_layout(
-                    height=420,
-                    annotations=[dict(
-                        x=0.5,
-                        y=0.3,
-                        text=f"<b>{status}</b>",
-                        showarrow=False,
-                        font=dict(size=24, color=color)
-                    )]
-                )
-                
-                st.plotly_chart(fig, use_container_width=True)
-                
-                # ======================
-                # Important Note
-                # ======================
-                st.markdown(
-                    "**Important Note:** This model is not 100% perfect. "
-                    "Deepfake methods keep improving, so results should be used as guidance—not absolute proof."
-                )
-                
-                # ======================
-                # DOWNLOAD REPORT BUTTON
-                # ======================
-                import io
-                from reportlab.lib.pagesizes import A4
-                from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image as RLImage
-                from reportlab.lib.styles import getSampleStyleSheet
-                from reportlab.lib import colors
-                from reportlab.lib.units import inch
-                import tempfile
-                import os
-                
-                # --- PDF buffer ---
-                pdf_buffer = io.BytesIO()
-                pdf = SimpleDocTemplate(pdf_buffer, pagesize=A4)
-                styles = getSampleStyleSheet()
-                story = []
-                
-                # --- Report Header ---
-                story.append(Paragraph("<b>Deepfake Detection Report</b>", styles["Title"]))
-                story.append(Spacer(1, 12))
-                
-                # --- Summary ---
-                summary_text = f"""
-                <b>Source:</b> {video_filename}<br/>
-                <b>Result:</b> {status}<br/>
-                <b>Confidence Score:</b> {fake_prob:.2f}%<br/>
-                <b>Extracted Faces:</b> {len(frames)}<br/>
-                <b>Date:</b> {upload_time}<br/>
-                """
-                story.append(Paragraph(summary_text, styles["Normal"]))
-                story.append(Spacer(1, 12))
-                
-                # --- Extracted Faces Section ---
-                story.append(Paragraph("<b>Extracted Face Images</b>", styles["Heading2"]))
-                story.append(Spacer(1, 12))
-                
-                # Save faces to temporary files
-                faces_temp_paths = []
-                for i, face in enumerate(frames):
-                    face_path = os.path.join(tempfile.gettempdir(), f"face_{i+1}.png")
-                    cv2.imwrite(face_path, face)
-                    faces_temp_paths.append(face_path)
-                
-                # Prepare table with 5 images per row
-                max_width = 1.1 * inch
-                max_height = 1.1 * inch
-                rows = []
-                row = []
-                
-                for i, img_path in enumerate(faces_temp_paths):
-                    try:
-                        img = RLImage(img_path, width=max_width, height=max_height)
-                    except Exception:
-                        continue
+                    r = 255
+                    g = 233 - int((233 - 182) * ((i - 50) / 50))
+                    b = 169 - int((169 - 166) * ((i - 50) / 50))
+                gradient_steps.append({'range': [i, i + 5], 'color': f'#{r:02X}{g:02X}{b:02X}'})
+        
+            fig = go.Figure(go.Indicator(
+                mode="gauge+number",
+                value=fake_prob,
+                number={'font': {'size': 46, 'color': color, 'family': 'Arial Black'}, 'valueformat': '.2f', 'suffix': '%'},
+                gauge={'axis': {'range': [0, 100]}, 'bar': {'color': color}, 'steps': gradient_steps,
+                       'threshold': {'line': {'color': "black", 'width': 3}, 'value': fake_prob}}
+            ))
+            fig.update_layout(height=420, annotations=[dict(x=0.5, y=0.3, text=f"<b>{status}</b>", showarrow=False,
+                                                            font=dict(size=24, color=color))])
+            st.plotly_chart(fig, use_container_width=True)
+        
+            st.markdown(
+                "**Important Note:** This model is not 100% perfect. "
+                "Deepfake methods keep improving, so results should be used as guidance—not absolute proof."
+            )
+        
+            # --- PDF Generation ---
+            import io
+            from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image as RLImage
+            from reportlab.lib.pagesizes import A4
+            from reportlab.lib.styles import getSampleStyleSheet
+            from reportlab.lib import colors
+            from reportlab.lib.units import inch
+            import tempfile, os
+        
+            pdf_buffer = io.BytesIO()
+            pdf = SimpleDocTemplate(pdf_buffer, pagesize=A4)
+            styles = getSampleStyleSheet()
+            story = []
+        
+            story.append(Paragraph("<b>Deepfake Detection Report</b>", styles["Title"]))
+            story.append(Spacer(1, 12))
+        
+            summary_text = f"""
+            <b>Source:</b> {video_filename}<br/>
+            <b>Result:</b> {status}<br/>
+            <b>Confidence Score:</b> {fake_prob:.2f}%<br/>
+            <b>Extracted Faces:</b> {len(frames)}<br/>
+            <b>Date:</b> {upload_time}<br/>
+            """
+            story.append(Paragraph(summary_text, styles["Normal"]))
+            story.append(Spacer(1, 12))
+        
+            story.append(Paragraph("<b>Extracted Face Images</b>", styles["Heading2"]))
+            story.append(Spacer(1, 12))
+        
+            faces_temp_paths = []
+            for i, face in enumerate(frames):
+                face_path = os.path.join(tempfile.gettempdir(), f"face_{i+1}.png")
+                cv2.imwrite(face_path, face)
+                faces_temp_paths.append(face_path)
+        
+            max_width, max_height = 1.1 * inch, 1.1 * inch
+            rows, row = [], []
+            for i, img_path in enumerate(faces_temp_paths):
+                try:
+                    img = RLImage(img_path, width=max_width, height=max_height)
                     row.append(img)
                     if (i + 1) % 5 == 0:
                         rows.append(row)
                         row = []
-                
-                if row:
-                    rows.append(row)
-                
-                if rows:
-                    table = Table(rows, hAlign='CENTER')
-                    table.setStyle(TableStyle([
-                        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-                        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-                        ('INNERGRID', (0, 0), (-1, -1), 0.25, colors.grey),
-                        ('BOX', (0, 0), (-1, -1), 0.25, colors.grey)
-                    ]))
-                    story.append(table)
-                
-                # --- Build PDF ---
-                pdf.build(story)
-                pdf_buffer.seek(0)
-                
-                # --- Download Button ---
-                st.download_button(
-                    label="Download Detection Report",
-                    data=pdf_buffer,
-                    file_name="detection_report.pdf",
-                    mime="application/pdf"
-                )
-        except:
-            st.error("Error during processing.")
-
+                except Exception as e:
+                    st.warning(f"Skipping an image in PDF: {e}")
+            if row:
+                rows.append(row)
+        
+            if rows:
+                table = Table(rows, hAlign='CENTER')
+                table.setStyle(TableStyle([('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                                           ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                                           ('INNERGRID', (0, 0), (-1, -1), 0.25, colors.grey),
+                                           ('BOX', (0, 0), (-1, -1), 0.25, colors.grey)]))
+                story.append(table)
+        
+            pdf.build(story)
+            pdf_buffer.seek(0)
+        
+            st.download_button(
+                label="Download Detection Report",
+                data=pdf_buffer,
+                file_name="detection_report.pdf",
+                mime="application/pdf"
+            )
+        
+        except Exception as e:
+            st.error(f"Error during processing: {e}")
+        
         finally:
             st.session_state.is_detecting = False
-
 # ======================
 # FOOTER
 # ======================
