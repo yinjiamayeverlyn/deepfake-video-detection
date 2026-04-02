@@ -275,7 +275,7 @@ if video_file:
                 value=fake_prob,
             
                 number={
-                    'font': {'size': gauge_font},
+                    'font': {'size': gauge_font, 'color': color},
                     'valueformat': '.2f',
                     'suffix': '%'
                 },
