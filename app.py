@@ -247,46 +247,60 @@ if valid_video and video_path and os.path.exists(video_path):
         st.session_state.is_detecting = False
 
     if st.button("Submit for Detection"):
-
+    
+        # Prevent double click
         if st.session_state.is_detecting:
-            st.warning("Already processing. Please wait.")
+            st.error("Processing already in progress. Please wait and try again.")
+            
+            # RESET so user can click again
+            st.session_state.is_detecting = False
             st.stop()
-
+    
+        # Start processing
         st.session_state.is_detecting = True
-
+    
         try:
             if duration < 4:
-                st.error("Video too short (<4 seconds).")
+                st.error("Video too short (<4 seconds). Please upload a longer video.")
+                
+                # RESET STATE
                 st.session_state.is_detecting = False
                 st.stop()
-
+    
             frames = []
             cap = cv2.VideoCapture(video_path)
             interval = int(fps) if fps > 0 else 1
             count = 0
-
+    
             with st.spinner("Processing video..."):
-
+    
                 faces_dir = tempfile.mkdtemp(prefix="faces_")
-
+    
                 if "temp_dirs" not in st.session_state:
                     st.session_state.temp_dirs = []
-
+    
                 st.session_state.temp_dirs.append(faces_dir)
-
+    
                 while True:
                     ret, frame = cap.read()
                     if not ret:
                         break
-
+    
                     if count % interval == 0:
                         face = crop_face(frame)
                         if face is not None:
                             frames.append(face)
-
+    
                     count += 1
-
-                cap.release()
+    
+            cap.release()
+    
+        except Exception as e:
+            st.error("Something went wrong during processing.")
+    
+        finally:
+            # ALWAYS RESET (VERY IMPORTANT)
+            st.session_state.is_detecting = False
 
             # ======================
             # SHOW FACES (EXPANDER)
