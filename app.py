@@ -403,6 +403,96 @@ if valid_video and video_path and os.path.exists(video_path):
                 )
 
                 st.plotly_chart(fig, use_container_width=True)
+                
+                # ======================
+                # Important Note
+                # ======================
+                st.markdown(
+                    "**Important Note:** This model is not 100% perfect. "
+                    "Deepfake methods keep improving, so results should be used as guidance—not absolute proof."
+                )
+                
+                # ======================
+                # DOWNLOAD REPORT BUTTON
+                # ======================
+                import io
+                from reportlab.lib.pagesizes import A4
+                from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image, Table, TableStyle
+                from reportlab.lib.styles import getSampleStyleSheet
+                from reportlab.lib import colors
+                
+                # --- PDF buffer ---
+                pdf_buffer = io.BytesIO()
+                pdf = SimpleDocTemplate(pdf_buffer, pagesize=A4)
+                styles = getSampleStyleSheet()
+                story = []
+                
+                # --- Report Header ---
+                story.append(Paragraph("<b>Deepfake Detection Report</b>", styles["Title"]))
+                story.append(Spacer(1, 12))
+                
+                # --- Summary ---
+                summary_text = f"""
+                <b>Source:</b> {video_filename}<br/>
+                <b>Result:</b> {status}<br/>
+                <b>Confidence Score:</b> {fake_prob:.2f}%<br/>
+                <b>Extracted Faces:</b> {len(frames)}<br/>
+                <b>Date:</b> {upload_time}<br/>
+                """
+                story.append(Paragraph(summary_text, styles["Normal"]))
+                story.append(Spacer(1, 12))
+                
+                # --- Extracted Faces Section ---
+                story.append(Paragraph("<b>Extracted Face Images</b>", styles["Heading2"]))
+                story.append(Spacer(1, 12))
+                
+                # Save faces to temporary files
+                faces_temp_paths = []
+                for i, face in enumerate(frames):
+                    face_path = os.path.join(tempfile.gettempdir(), f"face_{i+1}.png")
+                    cv2.imwrite(face_path, face)
+                    faces_temp_paths.append(face_path)
+                
+                # Prepare table with 5 images per row
+                max_width = 1.1 * inch
+                max_height = 1.1 * inch
+                rows = []
+                row = []
+                
+                for i, img_path in enumerate(faces_temp_paths):
+                    try:
+                        img = Image(img_path, width=max_width, height=max_height)
+                    except Exception:
+                        continue
+                    row.append(img)
+                    if (i + 1) % 5 == 0:
+                        rows.append(row)
+                        row = []
+                
+                if row:
+                    rows.append(row)
+                
+                if rows:
+                    table = Table(rows, hAlign='CENTER')
+                    table.setStyle(TableStyle([
+                        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                        ('INNERGRID', (0, 0), (-1, -1), 0.25, colors.grey),
+                        ('BOX', (0, 0), (-1, -1), 0.25, colors.grey)
+                    ]))
+                    story.append(table)
+                
+                # --- Build PDF ---
+                pdf.build(story)
+                pdf_buffer.seek(0)
+                
+                # --- Download Button ---
+                st.download_button(
+                    label="Download Detection Report",
+                    data=pdf_buffer,
+                    file_name="detection_report.pdf",
+                    mime="application/pdf"
+                )
 
         except:
             st.error("Error during processing.")
