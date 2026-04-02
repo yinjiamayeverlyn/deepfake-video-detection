@@ -361,7 +361,7 @@ if valid_video and video_path and os.path.exists(video_path):
 
                     number={
                         'font': {
-                            'size': 52,
+                            'size': 48,
                             'color': color
                         },
                         'valueformat': '.2f',
@@ -384,10 +384,10 @@ if valid_video and video_path and os.path.exists(video_path):
                     height=420,
                     annotations=[dict(
                         x=0.5,
-                        y=0.25,
+                        y=0.3,
                         text=f"<b>{status}</b>",
                         showarrow=False,
-                        font=dict(size=28, color=color)
+                        font=dict(size=24, color=color)
                     )]
                 )
 
