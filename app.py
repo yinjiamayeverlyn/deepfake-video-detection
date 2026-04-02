@@ -384,7 +384,6 @@ if valid_video and video_path and os.path.exists(video_path):
 
                 fig.update_layout(
                     height=420,
-                    font=dict(family=font_family),
                     annotations=[dict(
                         x=0.5,
                         y=0.3,
