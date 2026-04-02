@@ -413,11 +413,15 @@ if valid_video and video_path and os.path.exists(video_path):
                 # ======================
                 # Important Note
                 # ======================
-                st.markdown(
-                    "**Important Note:** This model is not 100% perfect. "
-                    "Deepfake methods keep improving, so results should be used as guidance—not absolute proof."
-                )
+                st.markdown("""
+                **Model Information:**  
+                - **Architecture:** Pretrained EfficientNet-B0 (RWightman)  
+                - **Training Datasets:** FaceForensics++ (FF), Celeb-DF, DFDC, and DFD  
+                - **Performance:** Achieves high accuracy on each dataset; designed for robust deepfake detection.  
                 
+                *Note:* No model is 100% accurate. Deepfake techniques are constantly evolving, so results are for guidance only.
+                """)
+            
                 # ======================
                 # DOWNLOAD REPORT BUTTON
                 # ======================
@@ -438,6 +442,9 @@ if valid_video and video_path and os.path.exists(video_path):
                 <b>Confidence Score:</b> {fake_prob:.2f}%<br/>
                 <b>Extracted Faces:</b> {len(frames)}<br/>
                 <b>Date:</b> {upload_time}<br/>
+                <b>Model:</b> Pretrained EfficientNet-B0 (RWightman)<br/>
+                <b>Training Datasets:</b> FF, Celeb-DF, DFDC, DFD<br/>
+                <b>Note:</b> The model is highly accurate on these datasets but not 100% perfect.
                 """
                 story.append(Paragraph(summary_text, styles["Normal"]))
                 story.append(Spacer(1, 12))
