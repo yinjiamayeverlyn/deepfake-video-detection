@@ -156,8 +156,7 @@ import urllib.request
 import datetime
 from zoneinfo import ZoneInfo
 
-st.title("🎬 Deepfake Video Detection")
-
+st.image("images/home_banner.png", use_container_width=True) 
 st.markdown("<h2 style='text-align:center;'>Upload Video for Deepfake Detection</h2>", unsafe_allow_html=True)
 
 # ======================
