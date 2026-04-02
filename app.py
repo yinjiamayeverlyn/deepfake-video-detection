@@ -329,9 +329,9 @@ if valid_video and video_path and os.path.exists(video_path):
                 # PREDICTION
                 # ======================
                 fake_prob = predict_video(frames)
-
+                
                 st.subheader(f"Fake Probability: {fake_prob:.2f}%")
-
+                
                 # ======================
                 # GAUGE
                 # ======================
@@ -347,7 +347,7 @@ if valid_video and video_path and os.path.exists(video_path):
                     status = "Likely REAL"
                     color = "green"
                     st.success(status)
-
+                
                 gradient_steps = []
                 for i in range(0, 101, 5):
                     if i < 50:
@@ -358,18 +358,18 @@ if valid_video and video_path and os.path.exists(video_path):
                         r = 255
                         g = 233 - int((233 - 182) * ((i - 50) / 50))
                         b = 169 - int((169 - 166) * ((i - 50) / 50))
-
+                
                     gradient_steps.append({
                         'range': [i, i + 5],
                         'color': f'#{r:02X}{g:02X}{b:02X}'
                     })
-
+                
                 font_family = "Arial Black"
-
+                
                 fig = go.Figure(go.Indicator(
                     mode="gauge+number",
                     value=fake_prob,
-
+                
                     number={
                         'font': {
                             'size': 46,
@@ -379,7 +379,7 @@ if valid_video and video_path and os.path.exists(video_path):
                         'valueformat': '.2f',
                         'suffix': '%'
                     },
-
+                
                     gauge={
                         'axis': {'range': [0, 100]},
                         'bar': {'color': color},
@@ -390,7 +390,7 @@ if valid_video and video_path and os.path.exists(video_path):
                         }
                     }
                 ))
-
+                
                 fig.update_layout(
                     height=420,
                     annotations=[dict(
@@ -401,7 +401,7 @@ if valid_video and video_path and os.path.exists(video_path):
                         font=dict(size=24, color=color)
                     )]
                 )
-
+                
                 st.plotly_chart(fig, use_container_width=True)
                 
                 # ======================
@@ -417,9 +417,12 @@ if valid_video and video_path and os.path.exists(video_path):
                 # ======================
                 import io
                 from reportlab.lib.pagesizes import A4
-                from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image, Table, TableStyle
+                from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image as RLImage
                 from reportlab.lib.styles import getSampleStyleSheet
                 from reportlab.lib import colors
+                from reportlab.lib.units import inch
+                import tempfile
+                import os
                 
                 # --- PDF buffer ---
                 pdf_buffer = io.BytesIO()
@@ -461,7 +464,7 @@ if valid_video and video_path and os.path.exists(video_path):
                 
                 for i, img_path in enumerate(faces_temp_paths):
                     try:
-                        img = Image(img_path, width=max_width, height=max_height)
+                        img = RLImage(img_path, width=max_width, height=max_height)
                     except Exception:
                         continue
                     row.append(img)
@@ -493,7 +496,6 @@ if valid_video and video_path and os.path.exists(video_path):
                     file_name="detection_report.pdf",
                     mime="application/pdf"
                 )
-
         except:
             st.error("Error during processing.")
 
