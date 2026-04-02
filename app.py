@@ -355,6 +355,8 @@ if valid_video and video_path and os.path.exists(video_path):
                         'color': f'#{r:02X}{g:02X}{b:02X}'
                     })
 
+                font_family = "Arial Black"
+
                 fig = go.Figure(go.Indicator(
                     mode="gauge+number",
                     value=fake_prob,
@@ -362,7 +364,8 @@ if valid_video and video_path and os.path.exists(video_path):
                     number={
                         'font': {
                             'size': 48,
-                            'color': color
+                            'color': color,
+                            'family': font_family
                         },
                         'valueformat': '.2f',
                         'suffix': '%'
@@ -371,7 +374,6 @@ if valid_video and video_path and os.path.exists(video_path):
                     gauge={
                         'axis': {'range': [0, 100]},
                         'bar': {'color': color},
-                        'bgcolor': 'white', 
                         'steps': gradient_steps,
                         'threshold': {
                             'line': {'color': "black", 'width': 3},
@@ -382,12 +384,13 @@ if valid_video and video_path and os.path.exists(video_path):
 
                 fig.update_layout(
                     height=420,
+                    font=dict(family=font_family),
                     annotations=[dict(
                         x=0.5,
                         y=0.3,
                         text=f"<b>{status}</b>",
                         showarrow=False,
-                        font=dict(size=24, color=color)
+                        font=dict(size=26, color=color)
                     )]
                 )
 
