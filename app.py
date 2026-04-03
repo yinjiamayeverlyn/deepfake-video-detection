@@ -171,7 +171,7 @@ import urllib.request
 import datetime
 from zoneinfo import ZoneInfo
 
-st.image("images/home_banner.png", use_container_width=True) 
+st.image("images/home_mobile.png"if is_mobile else "images/home_banner.png", use_container_width=True) 
 st.markdown("<h2 style='text-align:center;'>Upload Video for Deepfake Detection</h2>", unsafe_allow_html=True)
 
 # ======================
