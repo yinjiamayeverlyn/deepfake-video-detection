@@ -261,84 +261,54 @@ if valid_video and video_path and os.path.exists(video_path):
         st.session_state.is_detecting = False
 
     if st.button("Submit for Detection"):
-    
+
         # Prevent double click
         if st.session_state.is_detecting:
             st.error("Processing already in progress. Please wait and try again.")
-            
+
             # RESET so user can click again
             st.session_state.is_detecting = False
             st.stop()
-    
+
         # Start processing
         st.session_state.is_detecting = True
-    
+
         try:
             if duration < 4:
                 st.error("Video too short (<4 seconds). Please upload a longer video.")
-                
+
                 # RESET STATE
                 st.session_state.is_detecting = False
-                st.stop()   
+                st.stop()
 
             frames = []
             cap = cv2.VideoCapture(video_path)
-            
-            # ======================
-            # ADAPTIVE SAMPLING LOGIC
-            # ======================
-            if duration < 10:
-                # Short video → sample more frames
-                interval = max(1, int(fps // 3))  # denser sampling
-            else:
-                # Normal video
-                interval = int(fps) if fps > 0 else 1
-            
+            interval = int(fps) if fps > 0 else 1
             count = 0
-            
-            # For diversity check
-            prev_frame_gray = None
-            DIFF_THRESHOLD = 15  # adjust if needed
 
             with st.spinner("Processing video..."):
-    
+
                 faces_dir = tempfile.mkdtemp(prefix="faces_")
-    
+
                 if "temp_dirs" not in st.session_state:
                     st.session_state.temp_dirs = []
-    
+
                 st.session_state.temp_dirs.append(faces_dir)
-    
+
                 while True:
                     ret, frame = cap.read()
                     if not ret:
                         break
- 
+
                     if count % interval == 0:
-                        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-                    
-                        # ======================
-                        # DIVERSITY CHECK
-                        # ======================
-                        if prev_frame_gray is not None:
-                            diff = cv2.absdiff(gray, prev_frame_gray)
-                            mean_diff = np.mean(diff)
-                    
-                            # Skip very similar frames
-                            if mean_diff < DIFF_THRESHOLD:
-                                count += 1
-                                continue
-                    
-                        prev_frame_gray = gray
-                    
                         face = crop_face(frame)
                         if face is not None:
                             frames.append(face)
-        
+
                     count += 1
-    
+
             cap.release()
-                     
+
             # ======================
             # SHOW FACES (EXPANDER)
             # ======================
@@ -346,26 +316,26 @@ if valid_video and video_path and os.path.exists(video_path):
                 st.error("No face detected.")
             else:
                 st.success(f"{len(frames)} faces extracted")
-            
+
                 st.subheader("Extracted Faces")
-            
+
                 total_faces = len(frames)
-                
+
                 # Decide column count
                 num_cols = 3 if is_mobile else 5
-            
+
                 # Different preview limit
                 preview_limit = 3 if is_mobile else 15
-                
+
                 preview_faces = frames[:preview_limit]
-            
+
                 # ======================
                 # PREVIEW SECTION
                 # ======================
                 for i in range(0, len(preview_faces), num_cols):
                     row_faces = preview_faces[i:i + num_cols]
                     cols = st.columns(num_cols)
-                
+
                     for j, face in enumerate(row_faces):
                         face_rgb = cv2.cvtColor(face, cv2.COLOR_BGR2RGB)
                         cols[j].image(
@@ -373,20 +343,20 @@ if valid_video and video_path and os.path.exists(video_path):
                             caption=f"Face {i + j + 1}",
                             use_container_width=True
                         )
-            
+
                 # ======================
                 # EXPANDER SECTION
                 # ======================
                 if total_faces > preview_limit:
                     st.caption(f"Showing {preview_limit} of {total_faces} faces")
-            
+
                     with st.expander(f"View remaining {total_faces - preview_limit} faces"):
                         remaining_faces = frames[preview_limit:]
-            
+
                         for i in range(0, len(remaining_faces), num_cols):
                             row_faces = remaining_faces[i:i + num_cols]
                             cols = st.columns(num_cols)
-            
+
                             for j, face in enumerate(row_faces):
                                 face_rgb = cv2.cvtColor(face, cv2.COLOR_BGR2RGB)
                                 cols[j].image(
@@ -394,14 +364,14 @@ if valid_video and video_path and os.path.exists(video_path):
                                     caption=f"Face {preview_limit + i + j + 1}",
                                     use_container_width=True
                                 )
-                                
+
                 # ======================
                 # PREDICTION
                 # ======================
                 fake_prob = predict_video(frames)
-                
+
                 st.subheader(f"Fake Probability: {fake_prob:.2f}%")
-                
+
                 # ======================
                 # GAUGE
                 # ======================
@@ -417,7 +387,7 @@ if valid_video and video_path and os.path.exists(video_path):
                     status = "Likely REAL"
                     color = "green"
                     st.success(status)
-                
+
                 gradient_steps = []
                 for i in range(0, 101, 5):
                     if i < 50:
@@ -428,18 +398,18 @@ if valid_video and video_path and os.path.exists(video_path):
                         r = 255
                         g = 233 - int((233 - 182) * ((i - 50) / 50))
                         b = 169 - int((169 - 166) * ((i - 50) / 50))
-                
+
                     gradient_steps.append({
                         'range': [i, i + 5],
                         'color': f'#{r:02X}{g:02X}{b:02X}'
                     })
-                
+
                 font_family = "Arial Black"
-                
+
                 fig = go.Figure(go.Indicator(
                     mode="gauge+number",
                     value=fake_prob,
-                
+
                     number={
                         'font': {
                             'size': 38 if is_mobile else 46,
@@ -449,7 +419,7 @@ if valid_video and video_path and os.path.exists(video_path):
                         'valueformat': '.2f',
                         'suffix': '%'
                     },
-                
+
                     gauge={
                         'axis': {'range': [0, 100]},
                         'bar': {'color': color},
@@ -460,8 +430,9 @@ if valid_video and video_path and os.path.exists(video_path):
                         }
                     }
                 ))
-                
+
                 fig.update_layout(
+                    height=420,
                     height= 440 if is_mobile else 380,
                     margin=dict(l=20 if is_mobile else 40,   # left margin
                                 r=20 if is_mobile else 40,   # right margin
@@ -475,9 +446,9 @@ if valid_video and video_path and os.path.exists(video_path):
                         font=dict(size=20 if is_mobile else 24, color=color)
                     )]
                 )
-                
+
                 st.plotly_chart(fig, use_container_width=True)
-                
+
                 # ======================
                 # Important Note
                 # ======================
@@ -489,7 +460,7 @@ if valid_video and video_path and os.path.exists(video_path):
                 
                 *Note:* No model is 100% accurate. Deepfake techniques are constantly evolving, so results are for guidance only.
                 """)
-            
+
                 # ======================
                 # DOWNLOAD REPORT BUTTON
                 # ======================
@@ -498,11 +469,11 @@ if valid_video and video_path and os.path.exists(video_path):
                 pdf = SimpleDocTemplate(pdf_buffer, pagesize=A4)
                 styles = getSampleStyleSheet()
                 story = []
-                
+
                 # --- Report Header ---
                 story.append(Paragraph("<b>Deepfake Detection Report</b>", styles["Title"]))
                 story.append(Spacer(1, 12))
-                
+
                 # --- Summary ---
                 summary_text = f"""
                 <b>Source:</b> {video_filename}<br/>
@@ -516,24 +487,24 @@ if valid_video and video_path and os.path.exists(video_path):
                 """
                 story.append(Paragraph(summary_text, styles["Normal"]))
                 story.append(Spacer(1, 12))
-                
+
                 # --- Extracted Faces Section ---
                 story.append(Paragraph("<b>Extracted Face Images</b>", styles["Heading2"]))
                 story.append(Spacer(1, 12))
-                
+
                 # Save faces to temporary files
                 faces_temp_paths = []
                 for i, face in enumerate(frames):
                     face_path = os.path.join(tempfile.gettempdir(), f"face_{i+1}.png")
                     cv2.imwrite(face_path, face)
                     faces_temp_paths.append(face_path)
-                
+
                 # Prepare table with 5 images per row
                 max_width = 1.1 * inch
                 max_height = 1.1 * inch
                 rows = []
                 row = []
-                
+
                 for i, img_path in enumerate(faces_temp_paths):
                     try:
                         img = RLImage(img_path, width=max_width, height=max_height)
@@ -543,10 +514,10 @@ if valid_video and video_path and os.path.exists(video_path):
                     if (i + 1) % 5 == 0:
                         rows.append(row)
                         row = []
-                
+
                 if row:
                     rows.append(row)
-                
+
                 if rows:
                     table = Table(rows, hAlign='CENTER')
                     table.setStyle(TableStyle([
@@ -556,11 +527,11 @@ if valid_video and video_path and os.path.exists(video_path):
                         ('BOX', (0, 0), (-1, -1), 0.25, colors.grey)
                     ]))
                     story.append(table)
-                
+
                 # --- Build PDF ---
                 pdf.build(story)
                 pdf_buffer.seek(0)
-                
+
                 # --- Download Button ---
                 st.download_button(
                     label="Download Detection Report",
@@ -582,4 +553,4 @@ st.markdown("""
 <div style='text-align: center; font-size: 14px; color: gray;'>
     © 2025 Deepfake Video Detection Web App | Developed for University Final Year Project 22004860
 </div>
-""", unsafe_allow_html=True) 
+""", unsafe_allow_html=True)
