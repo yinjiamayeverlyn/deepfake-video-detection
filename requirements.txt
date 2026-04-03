@@ -7,3 +7,4 @@ pillow
 facenet-pytorch
 plotly
 reportlab
+streamlit-js-eval
