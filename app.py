@@ -15,6 +15,14 @@ from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, Tabl
 from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.lib import colors
 from reportlab.lib.units import inch
+from streamlit_js_eval import streamlit_js_eval
+
+# Detect screen width
+width = streamlit_js_eval(js_expressions='window.innerWidth', key='WIDTH')
+
+is_mobile = False
+if width is not None:
+    is_mobile = width < 768
 
 # ======================
 # PAGE CONFIG
@@ -311,9 +319,9 @@ if valid_video and video_path and os.path.exists(video_path):
                 st.subheader("Extracted Faces")
 
                 total_faces = len(frames)
-
+       
                 preview_faces = frames[:15]
-                cols = st.columns(5)
+                cols = st.columns(3) if is_mobile else st.columns(5)
 
                 for i, face in enumerate(preview_faces):
                     col = cols[i % 5]
@@ -323,8 +331,8 @@ if valid_video and video_path and os.path.exists(video_path):
                 if total_faces > 15:
                     st.caption(f"Showing 15 of {total_faces} faces")
 
-                    with st.expander(f"View remaining {total_faces - 15} faces"):
-                        cols_all = st.columns(5)
+                    with st.expander(f"View remaining {total_faces - 15} faces"):                        
+                        cols_all = st.columns(3) if is_mobile else st.columns(5)
 
                         for i, face in enumerate(frames[15:], start=16):
                             col = cols_all[(i - 16) % 5]
