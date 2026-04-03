@@ -325,23 +325,28 @@ if valid_video and video_path and os.path.exists(video_path):
                 num_cols = 3 if is_mobile else 5
                 
                 preview_faces = frames[:15]
-                cols = st.columns(num_cols)
+
+                for i in range(0, len(preview_faces), num_cols):
+                    row_faces = preview_faces[i:i + num_cols]
+                    cols = st.columns(num_cols)
                 
-                for i, face in enumerate(preview_faces):
-                    col = cols[i % num_cols]   
-                    face_rgb = cv2.cvtColor(face, cv2.COLOR_BGR2RGB)
-                    col.image(face_rgb, caption=f"Face {i+1}", use_container_width=True)               
+                    for j, face in enumerate(row_faces):
+                        face_rgb = cv2.cvtColor(face, cv2.COLOR_BGR2RGB)
+                        cols[j].image(face_rgb, caption=f"Face {i + j + 1}", use_container_width=True)            
 
                 if total_faces > 15:
                     st.caption(f"Showing 15 of {total_faces} faces")
-
-                    with st.expander(f"View remaining {total_faces - 15} faces"):                        
-                        cols_all = st.columns(num_cols)
-
-                        for i, face in enumerate(frames[15:], start=16):
-                            col = cols_all[(i - 16) % num_cols] 
-                            face_rgb = cv2.cvtColor(face, cv2.COLOR_BGR2RGB)
-                            col.image(face_rgb, caption=f"Face {i}", use_container_width=True)
+                
+                    with st.expander(f"View remaining {total_faces - 15} faces"):
+                        remaining_faces = frames[15:]
+                
+                        for i in range(0, len(remaining_faces), num_cols):
+                            row_faces = remaining_faces[i:i + num_cols]
+                            cols = st.columns(num_cols)
+                
+                            for j, face in enumerate(row_faces):
+                                face_rgb = cv2.cvtColor(face, cv2.COLOR_BGR2RGB)
+                                cols[j].image(face_rgb, caption=f"Face {15 + i + j + 1}", use_container_width=True)
 
                 # ======================
                 # PREDICTION
