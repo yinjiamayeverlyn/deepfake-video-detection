@@ -308,7 +308,7 @@ if valid_video and video_path and os.path.exists(video_path):
                     count += 1
     
             cap.release()
-            
+                     
             # ======================
             # SHOW FACES (EXPANDER)
             # ======================
@@ -316,38 +316,55 @@ if valid_video and video_path and os.path.exists(video_path):
                 st.error("No face detected.")
             else:
                 st.success(f"{len(frames)} faces extracted")
-
+            
                 st.subheader("Extracted Faces")
-
+            
                 total_faces = len(frames)
                 
                 # Decide column count
                 num_cols = 3 if is_mobile else 5
+            
+                # ✅ Different preview limit
+                preview_limit = 3 if is_mobile else 15
                 
-                preview_faces = frames[:15]
-
+                preview_faces = frames[:preview_limit]
+            
+                # ======================
+                # PREVIEW SECTION
+                # ======================
                 for i in range(0, len(preview_faces), num_cols):
                     row_faces = preview_faces[i:i + num_cols]
                     cols = st.columns(num_cols)
                 
                     for j, face in enumerate(row_faces):
                         face_rgb = cv2.cvtColor(face, cv2.COLOR_BGR2RGB)
-                        cols[j].image(face_rgb, caption=f"Face {i + j + 1}", use_container_width=True)            
-
-                if total_faces > 15:
-                    st.caption(f"Showing 15 of {total_faces} faces")
-                
-                    with st.expander(f"View remaining {total_faces - 15} faces"):
-                        remaining_faces = frames[15:]
-                
+                        cols[j].image(
+                            face_rgb,
+                            caption=f"Face {i + j + 1}",
+                            use_container_width=True
+                        )
+            
+                # ======================
+                # EXPANDER SECTION
+                # ======================
+                if total_faces > preview_limit:
+                    st.caption(f"Showing {preview_limit} of {total_faces} faces")
+            
+                    with st.expander(f"View remaining {total_faces - preview_limit} faces"):
+                        remaining_faces = frames[preview_limit:]
+            
                         for i in range(0, len(remaining_faces), num_cols):
                             row_faces = remaining_faces[i:i + num_cols]
                             cols = st.columns(num_cols)
-                
+            
                             for j, face in enumerate(row_faces):
                                 face_rgb = cv2.cvtColor(face, cv2.COLOR_BGR2RGB)
-                                cols[j].image(face_rgb, caption=f"Face {15 + i + j + 1}", use_container_width=True) 
-
+                                cols[j].image(
+                                    face_rgb,
+                                    caption=f"Face {preview_limit + i + j + 1}",
+                                    use_container_width=True
+                                )
+                                
                 # ======================
                 # PREDICTION
                 # ======================
