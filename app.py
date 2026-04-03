@@ -346,7 +346,7 @@ if valid_video and video_path and os.path.exists(video_path):
                 
                             for j, face in enumerate(row_faces):
                                 face_rgb = cv2.cvtColor(face, cv2.COLOR_BGR2RGB)
-                                cols[j].image(face_rgb, caption=f"Face {15 + i + j + 1}", use_container_width=True)  can u update the code for me 
+                                cols[j].image(face_rgb, caption=f"Face {15 + i + j + 1}", use_container_width=True) 
 
                 # ======================
                 # PREDICTION
