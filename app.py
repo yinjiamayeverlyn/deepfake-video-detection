@@ -433,6 +433,10 @@ if valid_video and video_path and os.path.exists(video_path):
                 
                 fig.update_layout(
                     height=420,
+                    margin=dict(l=40 if is_mobile else 80,   # left margin
+                                r=40 if is_mobile else 80,   # right margin
+                                t=40,                        # top
+                                b=40),                       # bottom
                     annotations=[dict(
                         x=0.5,
                         y=0.35 if is_mobile else 0.25,
