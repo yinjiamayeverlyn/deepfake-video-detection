@@ -390,7 +390,7 @@ if valid_video and video_path and os.path.exists(video_path):
                 
                     number={
                         'font': {
-                            'size': 46,
+                            'size': 40 if is_mobile else 46,
                             'color': color,
                             'family': font_family
                         },
