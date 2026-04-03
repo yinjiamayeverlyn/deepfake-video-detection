@@ -20,8 +20,9 @@ from streamlit_js_eval import streamlit_js_eval
 # Detect screen width
 width = streamlit_js_eval(js_expressions='window.innerWidth', key='WIDTH')
 
-is_mobile = False
-if width is not None:
+if width is None:
+    is_mobile = False   # default desktop first load
+else:
     is_mobile = width < 768
 
 # ======================
@@ -319,23 +320,26 @@ if valid_video and video_path and os.path.exists(video_path):
                 st.subheader("Extracted Faces")
 
                 total_faces = len(frames)
-       
+                
+                # Decide column count
+                num_cols = 3 if is_mobile else 5
+                
                 preview_faces = frames[:15]
-                cols = st.columns(3) if is_mobile else st.columns(5)
-
+                cols = st.columns(num_cols)
+                
                 for i, face in enumerate(preview_faces):
-                    col = cols[i % 5]
+                    col = cols[i % num_cols]   
                     face_rgb = cv2.cvtColor(face, cv2.COLOR_BGR2RGB)
-                    col.image(face_rgb, caption=f"Face {i+1}", use_container_width=True)
+                    col.image(face_rgb, caption=f"Face {i+1}", use_container_width=True)               
 
                 if total_faces > 15:
                     st.caption(f"Showing 15 of {total_faces} faces")
 
                     with st.expander(f"View remaining {total_faces - 15} faces"):                        
-                        cols_all = st.columns(3) if is_mobile else st.columns(5)
+                        cols_all = st.columns(num_cols)
 
                         for i, face in enumerate(frames[15:], start=16):
-                            col = cols_all[(i - 16) % 5]
+                            col = cols_all[(i - 16) % num_cols] 
                             face_rgb = cv2.cvtColor(face, cv2.COLOR_BGR2RGB)
                             col.image(face_rgb, caption=f"Face {i}", use_container_width=True)
 
