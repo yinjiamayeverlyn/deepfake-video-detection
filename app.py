@@ -324,7 +324,7 @@ if valid_video and video_path and os.path.exists(video_path):
                 # Decide column count
                 num_cols = 3 if is_mobile else 5
             
-                # ✅ Different preview limit
+                # Different preview limit
                 preview_limit = 3 if is_mobile else 15
                 
                 preview_faces = frames[:preview_limit]
@@ -412,7 +412,7 @@ if valid_video and video_path and os.path.exists(video_path):
                 
                     number={
                         'font': {
-                            'size': 38 if is_mobile else 46,
+                            'size': 40 if is_mobile else 46,
                             'color': color,
                             'family': font_family
                         },
