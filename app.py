@@ -413,10 +413,10 @@ if valid_video and video_path and os.path.exists(video_path):
                     height=420,
                     annotations=[dict(
                         x=0.5,
-                        y=0.3,
+                        y=0.35 if is_mobile else 0.3,
                         text=f"<b>{status}</b>",
                         showarrow=False,
-                        font=dict(size=18 if is_mobile else 24, color=color)
+                        font=dict(size=20 if is_mobile else 24, color=color)
                     )]
                 )
                 
