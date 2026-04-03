@@ -8,3 +8,4 @@ facenet-pytorch
 plotly
 reportlab
 streamlit-js-eval
+facenet-pytorch
