@@ -443,7 +443,7 @@ if valid_video and video_path and os.path.exists(video_path):
                 <b>Extracted Faces:</b> {len(frames)}<br/>
                 <b>Date:</b> {upload_time}<br/>
                 <b>Model:</b> Pretrained EfficientNet-B0 (RWightman)<br/>
-                <b>Training Datasets:</b> FF, Celeb-DF, DFDC, DFD<br/>
+                <b>Training Datasets:</b> FaceForensics++, Celeb-DF, DFDC, DFD<br/>
                 <b>Note:</b> The model is highly accurate on these datasets but not 100% perfect.
                 """
                 story.append(Paragraph(summary_text, styles["Normal"]))
