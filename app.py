@@ -308,10 +308,7 @@ if valid_video and video_path and os.path.exists(video_path):
                     count += 1
     
             cap.release()
-    
-            # ======================
-            # SHOW FACES (EXPANDER)
-            # ======================
+            
             # ======================
             # SHOW FACES (EXPANDER)
             # ======================
@@ -319,60 +316,37 @@ if valid_video and video_path and os.path.exists(video_path):
                 st.error("No face detected.")
             else:
                 st.success(f"{len(frames)} faces extracted")
-            
+
                 st.subheader("Extracted Faces")
-            
+
                 total_faces = len(frames)
                 
                 # Decide column count
                 num_cols = 3 if is_mobile else 5
                 
-                # Responsive image size
-                img_size = 100 if is_mobile else 140
-                
                 preview_faces = frames[:15]
-            
+
                 for i in range(0, len(preview_faces), num_cols):
                     row_faces = preview_faces[i:i + num_cols]
                     cols = st.columns(num_cols)
                 
                     for j, face in enumerate(row_faces):
                         face_rgb = cv2.cvtColor(face, cv2.COLOR_BGR2RGB)
-            
-                        # ✅ Resize to square (fix tall image issue)
-                        face_resized = cv2.resize(face_rgb, (img_size, img_size))
-            
-                        # ✅ Display
-                        cols[j].image(face_resized)
-            
-                        # ✅ Cleaner caption
-                        cols[j].markdown(
-                            f"<div style='text-align:center; font-size:12px;'>Face {i + j + 1}</div>",
-                            unsafe_allow_html=True
-                        )
-            
+                        cols[j].image(face_rgb, caption=f"Face {i + j + 1}", use_container_width=True)            
+
                 if total_faces > 15:
                     st.caption(f"Showing 15 of {total_faces} faces")
-            
+                
                     with st.expander(f"View remaining {total_faces - 15} faces"):
                         remaining_faces = frames[15:]
-            
+                
                         for i in range(0, len(remaining_faces), num_cols):
                             row_faces = remaining_faces[i:i + num_cols]
                             cols = st.columns(num_cols)
-            
+                
                             for j, face in enumerate(row_faces):
                                 face_rgb = cv2.cvtColor(face, cv2.COLOR_BGR2RGB)
-            
-                                # ✅ Resize
-                                face_resized = cv2.resize(face_rgb, (img_size, img_size))
-            
-                                cols[j].image(face_resized)
-            
-                                cols[j].markdown(
-                                    f"<div style='text-align:center; font-size:12px;'>Face {15 + i + j + 1}</div>",
-                                    unsafe_allow_html=True
-                                )
+                                cols[j].image(face_rgb, caption=f"Face {15 + i + j + 1}", use_container_width=True)  can u update the code for me 
 
                 # ======================
                 # PREDICTION
