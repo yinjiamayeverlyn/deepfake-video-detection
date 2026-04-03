@@ -18,12 +18,6 @@ from reportlab.lib.units import inch
 from streamlit_js_eval import streamlit_js_eval
 from facenet_pytorch import InceptionResnetV1
 
-@st.cache_resource
-def load_embedder():
-    return InceptionResnetV1(pretrained='vggface2').eval().to(DEVICE)
-
-embedder = load_embedder()
-
 # Detect screen width
 width = streamlit_js_eval(js_expressions='window.innerWidth', key='WIDTH')
 
@@ -73,6 +67,12 @@ if "show_all_faces" not in st.session_state:
 # DEVICE
 # ======================
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+@st.cache_resource
+def load_embedder():
+    return InceptionResnetV1(pretrained='vggface2').eval().to(DEVICE)
+
+embedder = load_embedder()
 
 # ======================
 # MODEL ARCHITECTURE
