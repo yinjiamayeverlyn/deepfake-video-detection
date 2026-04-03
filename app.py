@@ -17,6 +17,7 @@ from reportlab.lib import colors
 from reportlab.lib.units import inch
 from streamlit_js_eval import streamlit_js_eval
 from facenet_pytorch import InceptionResnetV1
+from sklearn.cluster import DBSCAN
 
 # Detect screen width
 width = streamlit_js_eval(js_expressions='window.innerWidth', key='WIDTH')
@@ -151,6 +152,42 @@ def crop_faces(frame):
             faces.append(face)
 
     return faces
+
+# ======================
+# GET FACE EMBEDDING
+# ======================
+def get_embedding(face):
+    face_rgb = cv2.cvtColor(face, cv2.COLOR_BGR2RGB)
+    face_pil = Image.fromarray(face_rgb).resize((160, 160))
+    
+    face_tensor = transforms.ToTensor()(face_pil).unsqueeze(0).to(DEVICE)
+
+    with torch.no_grad():
+        embedding = embedder(face_tensor)
+
+    return embedding.cpu().numpy()[0]
+
+# ======================
+# CLUSTER FACES
+# ======================
+def cluster_faces(embeddings):
+    if len(embeddings) == 0:
+        return {}
+
+    clustering = DBSCAN(eps=0.8, min_samples=2, metric='euclidean')
+    labels = clustering.fit_predict(embeddings)
+
+    clusters = {}
+    for idx, label in enumerate(labels):
+        if label == -1:
+            continue
+
+        if label not in clusters:
+            clusters[label] = []
+
+        clusters[label].append(idx)
+
+    return clusters
 
 # ======================
 # PREDICT (FAKE PROBABILITY)
@@ -410,10 +447,56 @@ if valid_video and video_path and os.path.exists(video_path):
                 # ======================
                 # PREDICTION
                 # ======================
-                fake_prob = predict_video(frames)
+                # EMBEDDINGS
+                # ======================
+                embeddings = []
+                valid_faces = []
+                
+                for face in frames:
+                    try:
+                        emb = get_embedding(face)
+                        embeddings.append(emb)
+                        valid_faces.append(face)
+                    except:
+                        continue
+                
+                # 🔥 NEW ======================
+                # CLUSTERING
+                # ======================
+                clusters = cluster_faces(embeddings)
+                
+                person_results = []
+                
+                if len(clusters) == 0:
+                    fake_prob = predict_video(frames)
+                    person_results.append(("Single/Unknown", fake_prob))
+                else:
+                    for person_id, indices in clusters.items():
+                        person_faces = [valid_faces[i] for i in indices]
+                
+                        prob = predict_video(person_faces)
+                
+                        person_results.append((f"Person {person_id+1}", prob))
+                                
+                # ======================
+                # FINAL RESULT
+                # ======================
+                fake_prob = max([p[1] for p in person_results])
                 
                 st.subheader(f"Fake Probability: {fake_prob:.2f}%")
                 
+                # ======================
+                # PER PERSON RESULT
+                # ======================
+                st.subheader("Per Person Analysis")
+                
+                for name, prob in person_results:
+                    if prob > 70:
+                        st.error(f"{name}: {prob:.2f}% → FAKE")
+                    elif prob > 40:
+                        st.warning(f"{name}: {prob:.2f}% → Suspicious")
+                    else:
+                        st.success(f"{name}: {prob:.2f}% → Real")
                 # ======================
                 # GAUGE
                 # ======================
