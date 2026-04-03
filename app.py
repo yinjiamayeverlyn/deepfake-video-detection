@@ -279,13 +279,27 @@ if valid_video and video_path and os.path.exists(video_path):
                 
                 # RESET STATE
                 st.session_state.is_detecting = False
-                st.stop()
-    
+                st.stop()   
+
             frames = []
             cap = cv2.VideoCapture(video_path)
-            interval = int(fps) if fps > 0 else 1
+            
+            # ======================
+            # ADAPTIVE SAMPLING LOGIC
+            # ======================
+            if duration < 10:
+                # Short video → sample more frames
+                interval = max(1, int(fps // 3))  # denser sampling
+            else:
+                # Normal video
+                interval = int(fps) if fps > 0 else 1
+            
             count = 0
-    
+            
+            # For diversity check
+            prev_frame_gray = None
+            DIFF_THRESHOLD = 15  # adjust if needed
+
             with st.spinner("Processing video..."):
     
                 faces_dir = tempfile.mkdtemp(prefix="faces_")
@@ -299,12 +313,28 @@ if valid_video and video_path and os.path.exists(video_path):
                     ret, frame = cap.read()
                     if not ret:
                         break
-    
+ 
                     if count % interval == 0:
+                        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+                    
+                        # ======================
+                        # DIVERSITY CHECK
+                        # ======================
+                        if prev_frame_gray is not None:
+                            diff = cv2.absdiff(gray, prev_frame_gray)
+                            mean_diff = np.mean(diff)
+                    
+                            # Skip very similar frames
+                            if mean_diff < DIFF_THRESHOLD:
+                                count += 1
+                                continue
+                    
+                        prev_frame_gray = gray
+                    
                         face = crop_face(frame)
                         if face is not None:
                             frames.append(face)
-    
+        
                     count += 1
     
             cap.release()
