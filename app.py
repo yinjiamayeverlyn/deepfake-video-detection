@@ -16,6 +16,13 @@ from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.lib import colors
 from reportlab.lib.units import inch
 from streamlit_js_eval import streamlit_js_eval
+from facenet_pytorch import InceptionResnetV1
+
+@st.cache_resource
+def load_embedder():
+    return InceptionResnetV1(pretrained='vggface2').eval().to(DEVICE)
+
+embedder = load_embedder()
 
 # Detect screen width
 width = streamlit_js_eval(js_expressions='window.innerWidth', key='WIDTH')
@@ -100,7 +107,7 @@ model = load_model()
 # ======================
 @st.cache_resource
 def load_mtcnn():
-    return MTCNN(keep_all=False, device=DEVICE)
+    return MTCNN(keep_all=True, device=DEVICE)
 
 mtcnn = load_mtcnn()
 
@@ -118,29 +125,32 @@ transform = transforms.Compose([
 # ======================
 # FACE CROP
 # ======================
-def crop_face(frame):
+def crop_faces(frame):
     rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
     boxes, _ = mtcnn.detect(rgb)
 
+    faces = []
+
     if boxes is None:
-        return None
+        return faces
 
-    x1, y1, x2, y2 = boxes[0]
-    w, h = x2 - x1, y2 - y1
-    size = max(w, h) * 1.3
-    cx, cy = (x1 + x2) / 2, (y1 + y2) / 2
+    for box in boxes:
+        x1, y1, x2, y2 = box
+        w, h = x2 - x1, y2 - y1
+        size = max(w, h) * 1.3
+        cx, cy = (x1 + x2) / 2, (y1 + y2) / 2
 
-    new_x1 = int(max(0, cx - size / 2))
-    new_y1 = int(max(0, cy - size / 2))
-    new_x2 = int(min(frame.shape[1], cx + size / 2))
-    new_y2 = int(min(frame.shape[0], cy + size / 2))
+        new_x1 = int(max(0, cx - size / 2))
+        new_y1 = int(max(0, cy - size / 2))
+        new_x2 = int(min(frame.shape[1], cx + size / 2))
+        new_y2 = int(min(frame.shape[0], cy + size / 2))
 
-    face = frame[new_y1:new_y2, new_x1:new_x2]
+        face = frame[new_y1:new_y2, new_x1:new_x2]
 
-    if face.size == 0:
-        return None
+        if face.size != 0:
+            faces.append(face)
 
-    return face
+    return faces
 
 # ======================
 # PREDICT (FAKE PROBABILITY)
@@ -331,10 +341,12 @@ if valid_video and video_path and os.path.exists(video_path):
                     
                         prev_frame_gray = gray
                     
-                        face = crop_face(frame)
-                        if face is not None:
-                            frames.append(face)
-        
+                        faces_in_frame = crop_faces(frame)
+
+                        for face in faces_in_frame:
+                            if face is not None and face.size != 0:
+                                frames.append(face)
+                                
                     count += 1
     
             cap.release()
