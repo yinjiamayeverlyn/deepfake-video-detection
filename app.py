@@ -468,6 +468,42 @@ if valid_video and video_path and os.path.exists(video_path):
                     fake_prob = data["score"]
                 
                     st.subheader(f"Person {idx}")
+                    
+                    # ======================
+                    # SHOW FACES FOR THIS PERSON
+                    # ======================
+                    person_faces = data["faces"]
+                    
+                    # Limit preview (avoid lag)
+                    preview_limit = 6 if is_mobile else 10
+                    display_faces = person_faces[:preview_limit]
+                    
+                    num_cols = 3 if is_mobile else 5
+                    
+                    for i in range(0, len(display_faces), num_cols):
+                        row_faces = display_faces[i:i + num_cols]
+                        cols = st.columns(num_cols)
+                    
+                        for j, face in enumerate(row_faces):
+                            face_rgb = cv2.cvtColor(face, cv2.COLOR_BGR2RGB)
+                            cols[j].image(
+                                face_rgb,
+                                use_container_width=True
+                            )
+                    
+                    # Optional: show remaining faces
+                    if len(person_faces) > preview_limit:
+                        with st.expander(f"View all {len(person_faces)} faces for Person {idx}"):
+                            for i in range(0, len(person_faces), num_cols):
+                                row_faces = person_faces[i:i + num_cols]
+                                cols = st.columns(num_cols)
+                    
+                                for j, face in enumerate(row_faces):
+                                    face_rgb = cv2.cvtColor(face, cv2.COLOR_BGR2RGB)
+                                    cols[j].image(
+                                        face_rgb,
+                                        use_container_width=True
+                                    )
                 
                     if fake_prob > 70:
                         status = "Highly likely FAKE"
@@ -578,13 +614,7 @@ if valid_video and video_path and os.path.exists(video_path):
                 """
                 story.append(Paragraph(summary_text, styles["Normal"]))
                 story.append(Spacer(1, 12))
-
-                for idx, (person_id, data) in enumerate(results.items(), start=1):
-                    story.append(Paragraph(
-                        f"Person {idx}: {data['score']:.2f}%", styles["Normal"]
-                    ))
-                    story.append(Spacer(1, 6))
-
+            
                 # --- Extracted Faces Section ---
                 story.append(Paragraph("<b>Extracted Face Images</b>", styles["Heading2"]))
                 story.append(Spacer(1, 12))
@@ -625,6 +655,48 @@ if valid_video and video_path and os.path.exists(video_path):
                     ]))
                     story.append(table)
 
+                for idx, (person_id, data) in enumerate(results.items(), start=1):
+                    story.append(Paragraph(
+                        f"<b>Person {idx}:</b> {data['score']:.2f}%", styles["Normal"]
+                    ))
+                    story.append(Spacer(1, 6))
+                
+                    # Take limited faces to avoid huge PDF
+                    person_faces = data["faces"][:6]
+                
+                    face_paths = []
+                    for i, face in enumerate(person_faces):
+                        face_path = os.path.join(
+                            tempfile.gettempdir(),
+                            f"person_{idx}_face_{i}.png"
+                        )
+                        cv2.imwrite(face_path, face)
+                        face_paths.append(face_path)
+                
+                    # Put images in table (max 3 per row)
+                    img_row = []
+                    img_rows = []
+                
+                    for i, path in enumerate(face_paths):
+                        try:
+                            img = RLImage(path, width=1.2 * inch, height=1.2 * inch)
+                            img_row.append(img)
+                        except:
+                            continue
+                
+                        if (i + 1) % 3 == 0:
+                            img_rows.append(img_row)
+                            img_row = []
+                
+                    if img_row:
+                        img_rows.append(img_row)
+                
+                    if img_rows:
+                        table = Table(img_rows)
+                        story.append(table)
+                
+                    story.append(Spacer(1, 12))
+                    
                 # --- Build PDF ---
                 pdf.build(story)
                 pdf_buffer.seek(0)
