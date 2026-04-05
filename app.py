@@ -656,43 +656,49 @@ if valid_video and video_path and os.path.exists(video_path):
                     story.append(table)
 
                 for idx, (person_id, data) in enumerate(results.items(), start=1):
-                    story.append(Paragraph(
-                        f"<b>Person {idx}:</b> {data['score']:.2f}%", styles["Normal"]
-                    ))
+                    story.append(Paragraph(f"<b>Person {idx}:</b> {data['score']:.2f}%", styles["Normal"]))
                     story.append(Spacer(1, 6))
                 
                     # Take limited faces to avoid huge PDF
                     person_faces = data["faces"][:6]
                 
-                    face_paths = []
+                    # Save faces to temporary files
+                    faces_temp_paths = []
                     for i, face in enumerate(person_faces):
-                        face_path = os.path.join(
-                            tempfile.gettempdir(),
-                            f"person_{idx}_face_{i}.png"
-                        )
+                        face_path = os.path.join(tempfile.gettempdir(), f"person_{idx}_face_{i+1}.png")
                         cv2.imwrite(face_path, face)
-                        face_paths.append(face_path)
+                        faces_temp_paths.append(face_path)
                 
-                    # Put images in table (max 3 per row)
-                    img_row = []
-                    img_rows = []
+                    # Prepare table with same style as main table
+                    max_width = 1.1 * inch
+                    max_height = 1.1 * inch
+                    rows = []
+                    row = []
                 
-                    for i, path in enumerate(face_paths):
+                    images_per_row = 5  # same as main table
+                
+                    for i, img_path in enumerate(faces_temp_paths):
                         try:
-                            img = RLImage(path, width=1.2 * inch, height=1.2 * inch)
-                            img_row.append(img)
-                        except:
+                            img = RLImage(img_path, width=max_width, height=max_height)
+                            row.append(img)
+                        except Exception:
                             continue
                 
-                        if (i + 1) % 3 == 0:
-                            img_rows.append(img_row)
-                            img_row = []
+                        if (i + 1) % images_per_row == 0:
+                            rows.append(row)
+                            row = []
                 
-                    if img_row:
-                        img_rows.append(img_row)
+                    if row:
+                        rows.append(row)
                 
-                    if img_rows:
-                        table = Table(img_rows)
+                    if rows:
+                        table = Table(rows, hAlign='CENTER')
+                        table.setStyle(TableStyle([
+                            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                            ('INNERGRID', (0, 0), (-1, -1), 0.25, colors.grey),
+                            ('BOX', (0, 0), (-1, -1), 0.25, colors.grey)
+                        ]))
                         story.append(table)
                 
                     story.append(Spacer(1, 12))
