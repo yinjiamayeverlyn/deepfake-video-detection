@@ -16,6 +16,8 @@ from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.lib import colors
 from reportlab.lib.units import inch
 from streamlit_js_eval import streamlit_js_eval
+from facenet_pytorch import InceptionResnetV1
+from sklearn.cluster import DBSCAN
 
 # Detect screen width
 width = streamlit_js_eval(js_expressions='window.innerWidth', key='WIDTH')
@@ -96,6 +98,15 @@ def load_model():
 model = load_model()
 
 # ======================
+# FACE EMBEDDING MODEL (FOR CLUSTERING)
+# ======================
+@st.cache_resource
+def load_facenet():
+    return InceptionResnetV1(pretrained='vggface2').eval().to(DEVICE)
+
+facenet = load_facenet()
+
+# ======================
 # FACE DETECTOR
 # ======================
 @st.cache_resource
@@ -142,6 +153,22 @@ def crop_face(frame):
 
     return face
 
+# ======================
+# EMBEDDING FUNCTION
+# ======================
+
+def get_embedding(face):
+    face_rgb = cv2.cvtColor(face, cv2.COLOR_BGR2RGB)
+    face_resized = cv2.resize(face_rgb, (160, 160))
+
+    face_tensor = torch.tensor(face_resized).permute(2, 0, 1).float() / 255.0
+    face_tensor = face_tensor.unsqueeze(0).to(DEVICE)
+
+    with torch.no_grad():
+        embedding = facenet(face_tensor)
+
+    return embedding.cpu().numpy()[0]
+    
 # ======================
 # PREDICT (FAKE PROBABILITY)
 # ======================
@@ -368,86 +395,153 @@ if valid_video and video_path and os.path.exists(video_path):
                 # ======================
                 # PREDICTION
                 # ======================
-                fake_prob = predict_video(frames)
-
-                st.subheader(f"Fake Probability: {fake_prob:.2f}%")
-
                 # ======================
-                # GAUGE
+                # FACE CLUSTERING (IDENTITY GROUPING)
                 # ======================
-                if fake_prob > 70:
-                    status = "Highly likely FAKE"
-                    color = "red"
-                    st.error(status)
-                elif fake_prob > 40:
-                    status = "Suspicious (uncertain)"
-                    color = "orange"
-                    st.warning(status)
+                if len(frames) == 0:
+                    st.error("No face detected.")
                 else:
-                    status = "Likely REAL"
-                    color = "green"
-                    st.success(status)
+                    st.success(f"{len(frames)} faces extracted")
+                
+                    with st.spinner("Clustering faces by identity..."):
+                
+                        embeddings = []
+                        valid_faces = []
+                
+                        for face in frames:
+                            try:
+                                emb = get_embedding(face)
+                                embeddings.append(emb)
+                                valid_faces.append(face)
+                            except:
+                                continue
+                
+                    if len(embeddings) == 0:
+                        st.error("Embedding failed.")
+                        st.stop()
+                
+                    embeddings = np.array(embeddings)
+                
+                    # DBSCAN clustering
+                    clustering = DBSCAN(eps=0.6, min_samples=3).fit(embeddings)
+                    labels = clustering.labels_
+                
+                    # Group faces by person
+                    person_groups = {}
+                    for i, label in enumerate(labels):
+                        if label == -1:
+                            continue
+                
+                        if label not in person_groups:
+                            person_groups[label] = []
+                
+                        person_groups[label].append(valid_faces[i])
+                
+                    # Fallback (only 1 person case)
+                    if len(person_groups) == 0:
+                        person_groups[0] = valid_faces
+                
+                    st.subheader(f"Detected {len(person_groups)} person(s)")
 
-                gradient_steps = []
-                for i in range(0, 101, 5):
-                    if i < 50:
-                        r = 182 + int((255 - 182) * (i / 50))
-                        g = 239 + int((233 - 239) * (i / 50))
-                        b = 162 + int((169 - 162) * (i / 50))
-                    else:
-                        r = 255
-                        g = 233 - int((233 - 182) * ((i - 50) / 50))
-                        b = 169 - int((169 - 166) * ((i - 50) / 50))
-
-                    gradient_steps.append({
-                        'range': [i, i + 5],
-                        'color': f'#{r:02X}{g:02X}{b:02X}'
-                    })
-
-                font_family = "Arial Black"
-
-                fig = go.Figure(go.Indicator(
-                    mode="gauge+number",
-                    value=fake_prob,
-
-                    number={
-                        'font': {
-                            'size': 38 if is_mobile else 46,
-                            'color': color,
-                            'family': "Arial Black"
-                        },
-                        'valueformat': '.2f',
-                        'suffix': '%'
-                    },
-
-                    gauge={
-                        'axis': {'range': [0, 100]},
-                        'bar': {'color': color},
-                        'steps': gradient_steps,
-                        'threshold': {
-                            'line': {'color': "black", 'width': 3},
-                            'value': fake_prob
-                        }
+                # ======================
+                # PER PERSON PREDICTION
+                # ======================
+                results = {}
+                
+                for person_id, faces in person_groups.items():
+                
+                    if len(faces) < 3:
+                        continue  # skip weak cluster
+                
+                    fake_prob = predict_video(faces)
+                
+                    results[person_id] = {
+                        "score": fake_prob,
+                        "faces": faces
                     }
-                ))
-
-                fig.update_layout(                    
-                    height= 440 if is_mobile else 380,
-                    margin=dict(l=20 if is_mobile else 40,   # left margin
-                                r=20 if is_mobile else 40,   # right margin
-                                t=40,                        # top
-                                b=40),                       # bottom
-                    annotations=[dict(
-                        x=0.5,
-                        y=0.43 if is_mobile else 0.2,
-                        text=f"<b>{status}</b>",
-                        showarrow=False,
-                        font=dict(size=20 if is_mobile else 24, color=color)
-                    )]
-                )
-
-                st.plotly_chart(fig, use_container_width=True)
-
+                
+                # ======================
+                # DISPLAY RESULTS
+                # ======================
+                for idx, (person_id, data) in enumerate(results.items(), start=1):
+                
+                    fake_prob = data["score"]
+                
+                    st.subheader(f"Person {idx}")
+                
+                    if fake_prob > 70:
+                        status = "Highly likely FAKE"
+                        color = "red"
+                        st.error(status)
+                    elif fake_prob > 40:
+                        status = "Suspicious (uncertain)"
+                        color = "orange"
+                        st.warning(status)
+                    else:
+                        status = "Likely REAL"
+                        color = "green"
+                        st.success(status)
+                
+                    gradient_steps = []
+                    for i in range(0, 101, 5):
+                        if i < 50:
+                            r = 182 + int((255 - 182) * (i / 50))
+                            g = 239 + int((233 - 239) * (i / 50))
+                            b = 162 + int((169 - 162) * (i / 50))
+                        else:
+                            r = 255
+                            g = 233 - int((233 - 182) * ((i - 50) / 50))
+                            b = 169 - int((169 - 166) * ((i - 50) / 50))
+    
+                        gradient_steps.append({
+                            'range': [i, i + 5],
+                            'color': f'#{r:02X}{g:02X}{b:02X}'
+                        })
+    
+                    font_family = "Arial Black"
+    
+                    fig = go.Figure(go.Indicator(
+                        mode="gauge+number",
+                        value=fake_prob,
+    
+                        number={
+                            'font': {
+                                'size': 38 if is_mobile else 46,
+                                'color': color,
+                                'family': "Arial Black"
+                            },
+                            'valueformat': '.2f',
+                            'suffix': '%'
+                        },
+    
+                        gauge={
+                            'axis': {'range': [0, 100]},
+                            'bar': {'color': color},
+                            'steps': gradient_steps,
+                            'threshold': {
+                                'line': {'color': "black", 'width': 3},
+                                'value': fake_prob
+                            }
+                        }
+                    ))
+    
+                    fig.update_layout(                    
+                        height= 440 if is_mobile else 380,
+                        margin=dict(l=20 if is_mobile else 40,   # left margin
+                                    r=20 if is_mobile else 40,   # right margin
+                                    t=40,                        # top
+                                    b=40),                       # bottom
+                        annotations=[dict(
+                            x=0.5,
+                            y=0.43 if is_mobile else 0.2,
+                            text=f"<b>{status}</b>",
+                            showarrow=False,
+                            font=dict(size=20 if is_mobile else 24, color=color)
+                        )]
+                    )
+    
+                    st.plotly_chart(fig, use_container_width=True)
+                
                 # ======================
                 # Important Note
                 # ======================
@@ -476,9 +570,7 @@ if valid_video and video_path and os.path.exists(video_path):
                 # --- Summary ---
                 summary_text = f"""
                 <b>Source:</b> {video_filename}<br/>
-                <b>Result:</b> {status}<br/>
-                <b>Confidence Score:</b> {fake_prob:.2f}%<br/>
-                <b>Extracted Faces:</b> {len(frames)}<br/>
+                <b>Detected Persons:</b> {len(results)}<br/>
                 <b>Date:</b> {upload_time}<br/>
                 <b>Model:</b> Pretrained EfficientNet-B0 (RWightman)<br/>
                 <b>Training Datasets:</b> FaceForensics++, Celeb-DF, DFDC, DFD<br/>
@@ -486,6 +578,12 @@ if valid_video and video_path and os.path.exists(video_path):
                 """
                 story.append(Paragraph(summary_text, styles["Normal"]))
                 story.append(Spacer(1, 12))
+
+                for idx, (person_id, data) in enumerate(results.items(), start=1):
+                    story.append(Paragraph(
+                        f"Person {idx}: {data['score']:.2f}%", styles["Normal"]
+                    ))
+                    story.append(Spacer(1, 6))
 
                 # --- Extracted Faces Section ---
                 story.append(Paragraph("<b>Extracted Face Images</b>", styles["Heading2"]))
