@@ -656,6 +656,8 @@ if valid_video and video_path and os.path.exists(video_path):
                     story.append(table)
 
                 for idx, (person_id, data) in enumerate(results.items(), start=1):
+                    story.append(Spacer(1, 20)) 
+                    
                     story.append(Paragraph(f"<b>Person {idx}:</b> {data['score']:.2f}%", styles["Normal"]))
                     story.append(Spacer(1, 6))
                 
